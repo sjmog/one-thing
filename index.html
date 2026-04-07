@@ -1,0 +1,1788 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>One Thing</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #fafafa;
+      color: #333;
+      height: 100vh;
+      overflow: hidden;
+      transition: background 0.3s ease, color 0.3s ease;
+    }
+
+    /* Header */
+    .header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 16px;
+      padding: 16px;
+      z-index: 10;
+      transition: left 0.3s ease;
+    }
+
+    body.sidebar-open .header {
+      left: 280px;
+    }
+
+    .header button {
+      background: none;
+      border: none;
+      color: #ccc;
+      cursor: pointer;
+      font-size: 14px;
+      padding: 4px 8px;
+      transition: color 0.15s;
+    }
+
+    .header button:hover {
+      color: #888;
+    }
+
+    .header .current-date {
+      font-size: 14px;
+      color: #ccc;
+      min-width: 140px;
+      text-align: center;
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 4px;
+      transition: color 0.15s, background 0.15s;
+    }
+
+    .header .current-date:hover {
+      color: #888;
+      background: #f5f5f5;
+    }
+
+    /* Date Picker */
+    .date-picker {
+      position: absolute;
+      top: 50px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+      padding: 16px;
+      z-index: 100;
+      display: none;
+    }
+
+    .date-picker.open {
+      display: block;
+    }
+
+    .date-picker-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .date-picker-header button {
+      background: none;
+      border: none;
+      color: #888;
+      cursor: pointer;
+      font-size: 14px;
+      padding: 4px 8px;
+      border-radius: 4px;
+    }
+
+    .date-picker-header button:hover {
+      color: #333;
+      background: #eee;
+    }
+
+    .date-picker-month {
+      font-size: 14px;
+      font-weight: 500;
+      color: #333;
+    }
+
+    .date-picker-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 32px);
+      gap: 2px;
+    }
+
+    .date-picker-day-label {
+      font-size: 11px;
+      color: #999;
+      text-align: center;
+      padding: 4px 0;
+    }
+
+    .date-picker-day {
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      color: #333;
+      border: none;
+      background: none;
+      border-radius: 50%;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .date-picker-day:hover {
+      background: #eee;
+    }
+
+    .date-picker-day.other-month {
+      color: #ccc;
+    }
+
+    .date-picker-day.today {
+      font-weight: 600;
+    }
+
+    .date-picker-day.selected {
+      background: #333;
+      color: white;
+    }
+
+    .date-picker-day.selected:hover {
+      background: #555;
+    }
+
+    .date-picker-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 99;
+      display: none;
+    }
+
+    .date-picker-overlay.open {
+      display: block;
+    }
+
+    /* Sidebar Toggle */
+    .sidebar-toggle {
+      position: fixed;
+      top: 16px;
+      left: 20px;
+      z-index: 20;
+      background: none;
+      border: none;
+      color: #ccc;
+      cursor: pointer;
+      font-size: 20px;
+      padding: 8px;
+      border-radius: 8px;
+      transition: left 0.3s ease, color 0.15s, background 0.15s;
+    }
+
+    .sidebar-toggle:hover {
+      color: #888;
+      background: #f5f5f5;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      width: 280px;
+      background: white;
+      border-right: 1px solid #eee;
+      transform: translateX(-100%);
+      transition: transform 0.3s ease, background 0.3s ease, border-color 0.3s ease;
+      z-index: 15;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .sidebar.open {
+      transform: translateX(0);
+    }
+
+    .sidebar-header {
+      padding: 20px;
+    }
+
+    .sidebar-title {
+      font-size: 11px;
+      letter-spacing: 3px;
+      color: #ccc;
+      text-transform: uppercase;
+    }
+
+    /* Main content push */
+    .main-content {
+      transition: margin-left 0.3s ease;
+    }
+
+    body.sidebar-open .main-content {
+      margin-left: 280px;
+    }
+
+    body.sidebar-open .sidebar-toggle {
+      left: 300px;
+    }
+
+    .sidebar-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px 20px;
+    }
+
+    .list-items {
+      list-style: none;
+    }
+
+    .list-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 0;
+    }
+
+    .list-item-text {
+      flex: 1;
+      font-size: 15px;
+      outline: none;
+      line-height: 1.4;
+      transition: color 0.3s ease, opacity 0.3s ease;
+    }
+
+    .list-item.done .list-item-text {
+      text-decoration: line-through;
+      opacity: 0.4;
+    }
+
+    .list-item .item-actions {
+      flex-shrink: 0;
+    }
+
+
+    .list-placeholder {
+      display: flex;
+      align-items: center;
+      padding: 8px 0;
+      cursor: text;
+    }
+
+    .list-placeholder-text {
+      flex: 1;
+      font-size: 15px;
+      outline: none;
+      color: #999;
+      line-height: 1.4;
+    }
+
+    .list-placeholder-text:empty::before {
+      content: '+';
+      color: #ccc;
+    }
+
+    .list-placeholder-text:focus::before {
+      content: '';
+    }
+
+    /* Plan Mode */
+    .plan-mode {
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+
+    /* Theme Toggle */
+    .theme-toggle {
+      position: fixed;
+      top: 16px;
+      right: 20px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 8px;
+      color: #ccc;
+      transition: color 0.15s;
+      z-index: 10;
+    }
+
+    .theme-toggle:hover {
+      color: #888;
+    }
+
+    .theme-toggle svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    .theme-toggle .moon-icon {
+      display: none;
+    }
+
+    body.dark .theme-toggle .sun-icon {
+      display: none;
+    }
+
+    body.dark .theme-toggle .moon-icon {
+      display: block;
+    }
+
+    /* Dark Mode */
+    body.dark {
+      background: #1a1a1a;
+      color: #e0e0e0;
+    }
+
+    body.dark .sidebar {
+      background: #222;
+      border-right-color: #333;
+    }
+
+    body.dark .header .current-date:hover {
+      background: #333;
+    }
+
+    body.dark .date-picker {
+      background: #222;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    }
+
+    body.dark .date-picker-month {
+      color: #e0e0e0;
+    }
+
+    body.dark .date-picker-header button {
+      color: #555;
+    }
+
+    body.dark .date-picker-header button:hover {
+      color: #888;
+      background: #333;
+    }
+
+    body.dark .date-picker-day {
+      color: #e0e0e0;
+    }
+
+    body.dark .date-picker-day:hover {
+      background: #333;
+    }
+
+    body.dark .date-picker-day.other-month {
+      color: #555;
+    }
+
+    body.dark .date-picker-day.selected {
+      background: #e0e0e0;
+      color: #1a1a1a;
+    }
+
+    body.dark .date-picker-day.selected:hover {
+      background: #ccc;
+    }
+
+    body.dark .goal-input {
+      color: #e0e0e0;
+    }
+
+    body.dark .nice-item {
+      color: #bbb;
+    }
+
+    body.dark .list-item-text {
+      color: #e0e0e0;
+    }
+
+    body.dark .list-item.done .list-item-text {
+      opacity: 0.4;
+    }
+
+    body.dark .sidebar-toggle,
+    body.dark .theme-toggle,
+    body.dark .header button,
+    body.dark .header .current-date,
+    body.dark .goal-label,
+    body.dark .nice-label,
+    body.dark .sidebar-title {
+      color: #555;
+    }
+
+    body.dark .sidebar-toggle:hover,
+    body.dark .theme-toggle:hover,
+    body.dark .header button:hover,
+    body.dark .header .current-date:hover,
+    body.dark .goal-label:hover,
+    body.dark .nice-label:hover {
+      color: #888;
+    }
+
+    body.dark .sidebar-toggle:hover,
+    body.dark .header .current-date:hover {
+      background: #333;
+    }
+
+    /* Timer */
+    .timer {
+      position: fixed;
+      bottom: 20px;
+      right: 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      z-index: 10;
+    }
+
+    .timer-display {
+      font-size: 28px;
+      font-weight: 500;
+      font-variant-numeric: tabular-nums;
+      color: #ccc;
+      transition: color 0.3s ease;
+    }
+
+    .timer.running .timer-display {
+      color: #666;
+    }
+
+    .timer-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 8px;
+      color: #ccc;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: color 0.15s, background 0.15s;
+    }
+
+    .timer-btn:hover {
+      color: #888;
+      background: #f5f5f5;
+    }
+
+    .timer-btn svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    .timer-reset {
+      display: none;
+    }
+
+    .timer.paused.can-reset .timer-reset {
+      display: flex;
+    }
+
+    .timer-display {
+      outline: none;
+    }
+
+    .timer-display:focus {
+      color: #888;
+    }
+
+    body.dark .timer-display:focus {
+      color: #888;
+    }
+
+    .timer-focus-wrapper {
+      position: absolute;
+      bottom: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      margin-bottom: 12px;
+      text-align: center;
+    }
+
+    .timer-focus {
+      font-size: 11px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: #888;
+      outline: none;
+      min-width: 120px;
+      min-height: 16px;
+      text-align: center;
+      transition: color 0.3s ease;
+    }
+
+    .timer-focus:empty::before {
+      content: 'FOCUS';
+      color: #ccc;
+      cursor: pointer;
+      transition: color 0.15s;
+    }
+
+    .timer-focus:empty:hover::before {
+      color: #888;
+    }
+
+    .timer-focus:empty:focus::before {
+      content: '';
+    }
+
+    body.dark .timer-focus {
+      color: #999;
+    }
+
+    body.dark .timer-focus:empty::before {
+      color: #555;
+    }
+
+    body.dark .timer-focus:empty:hover::before {
+      color: #888;
+    }
+
+    /* Install hint */
+    .install-hint {
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      background: #f5f5f5;
+      border-radius: 20px;
+      font-size: 13px;
+      color: #888;
+      z-index: 10;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .install-hint.hidden {
+      display: none;
+    }
+
+    .install-hint-text {
+      cursor: pointer;
+    }
+
+    .install-hint-text:hover {
+      color: #666;
+    }
+
+    .install-hint-dismiss {
+      width: 18px;
+      height: 18px;
+      background: #eee;
+    }
+
+    .install-hint-dismiss svg {
+      width: 10px;
+      height: 10px;
+    }
+
+    .install-hint-dismiss:hover {
+      background: #ddd;
+    }
+
+    body.dark .install-hint {
+      background: #2a2a2a;
+      color: #777;
+    }
+
+    body.dark .install-hint-text:hover {
+      color: #999;
+    }
+
+    body.dark .install-hint-dismiss {
+      background: #333;
+    }
+
+    body.dark .install-hint-dismiss:hover {
+      background: #444;
+    }
+
+    /* Install modal */
+    .install-modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.4);
+      z-index: 100;
+      display: none;
+    }
+
+    .install-modal-overlay.open {
+      display: block;
+    }
+
+    .install-modal {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      border-radius: 16px;
+      padding: 32px;
+      max-width: 400px;
+      width: 90%;
+      z-index: 101;
+      display: none;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    }
+
+    .install-modal.open {
+      display: block;
+    }
+
+    .install-modal-close {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      background: #eee;
+    }
+
+    .install-modal-close:hover {
+      background: #ddd;
+    }
+
+    .install-modal-title {
+      font-size: 11px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: #ccc;
+      margin-bottom: 16px;
+    }
+
+    .install-modal-browser {
+      font-size: 20px;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 20px;
+    }
+
+    .install-modal-steps {
+      font-size: 14px;
+      color: #666;
+      line-height: 1.8;
+    }
+
+    .install-modal-steps ol {
+      margin: 0;
+      padding-left: 20px;
+    }
+
+    .install-modal-steps code {
+      background: #f5f5f5;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+
+    body.dark .install-modal {
+      background: #222;
+    }
+
+    body.dark .install-modal-close {
+      background: #333;
+    }
+
+    body.dark .install-modal-close:hover {
+      background: #444;
+    }
+
+    body.dark .install-modal-title {
+      color: #555;
+    }
+
+    body.dark .install-modal-browser {
+      color: #e0e0e0;
+    }
+
+    body.dark .install-modal-steps {
+      color: #999;
+    }
+
+    body.dark .install-modal-steps code {
+      background: #333;
+    }
+
+    body.dark .timer-display {
+      color: #555;
+    }
+
+    body.dark .timer.running .timer-display {
+      color: #888;
+    }
+
+    body.dark .timer-btn {
+      color: #555;
+    }
+
+    body.dark .timer-btn:hover {
+      color: #888;
+      background: #333;
+    }
+
+    /* Center content */
+    .center-content {
+      position: absolute;
+      top: 38.2%;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+      transition: left 0.3s ease;
+    }
+
+    body.sidebar-open .center-content {
+      left: calc(50% + 140px);
+    }
+
+    /* Goal */
+    .goal-section {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    .goal-label {
+      font-size: 11px;
+      letter-spacing: 3px;
+      color: #ccc;
+      margin-bottom: 12px;
+      cursor: pointer;
+      transition: color 0.15s;
+    }
+
+    .goal-label:hover {
+      color: #888;
+    }
+
+    .goal-input {
+      font-size: 42px;
+      font-weight: 600;
+      border: none;
+      background: transparent;
+      text-align: center;
+      width: 100%;
+      max-width: 600px;
+      color: #333;
+      outline: none;
+      transition: color 0.3s ease;
+    }
+
+    /* Nice to Do */
+    .nice-section {
+      text-align: center;
+      width: 100%;
+      max-width: 400px;
+    }
+
+    .nice-label {
+      font-size: 11px;
+      letter-spacing: 3px;
+      color: #ccc;
+      margin-bottom: 16px;
+      cursor: pointer;
+      transition: color 0.15s;
+    }
+
+    .nice-label:hover {
+      color: #888;
+    }
+
+    .nice-items {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .nice-item-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .nice-item-wrapper .item-actions {
+      position: absolute;
+      left: calc(100% + 8px);
+      display: flex;
+      gap: 4px;
+    }
+
+    .nice-item {
+      font-size: 16px;
+      color: #555;
+      outline: none;
+      min-height: 24px;
+      min-width: 100px;
+      text-align: center;
+      transition: color 0.3s ease, opacity 0.3s ease;
+    }
+
+    .nice-item:empty::before {
+      content: '\00a0';
+    }
+
+    .nice-item-wrapper.done .nice-item {
+      text-decoration: line-through;
+      opacity: 0.4;
+    }
+
+    /* Action buttons (check & delete) */
+    .item-actions {
+      opacity: 0;
+      display: flex;
+      gap: 4px;
+      transition: opacity 0.15s;
+    }
+
+    .nice-item-wrapper:hover .item-actions,
+    .list-item:hover .item-actions {
+      opacity: 1;
+    }
+
+    .action-btn {
+      background: #eee;
+      border: none;
+      cursor: pointer;
+      padding: 0;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s;
+      flex-shrink: 0;
+    }
+
+    .action-btn svg {
+      width: 12px;
+      height: 12px;
+      stroke: #bbb;
+      transition: stroke 0.15s;
+    }
+
+    .action-btn:hover {
+      background: #ddd;
+    }
+
+    .action-btn:hover svg {
+      stroke: #888;
+    }
+
+    body.dark .item-actions .action-btn {
+      background: #333;
+    }
+
+    body.dark .action-btn:hover {
+      background: #444;
+    }
+
+  </style>
+</head>
+<body>
+  <!-- Sidebar -->
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <span class="sidebar-title">Todo</span>
+    </div>
+    <div class="sidebar-content">
+      <ul class="list-items" id="list-items"></ul>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="main-content">
+    <!-- Header with date nav -->
+    <div class="header">
+      <button id="prev-day">&larr;</button>
+      <span class="current-date" id="current-date"></span>
+      <button id="next-day">&rarr;</button>
+
+      <!-- Date Picker -->
+      <div class="date-picker-overlay" id="date-picker-overlay"></div>
+      <div class="date-picker" id="date-picker">
+        <div class="date-picker-header">
+          <button id="picker-prev-month">&larr;</button>
+          <span class="date-picker-month" id="picker-month"></span>
+          <button id="picker-next-month">&rarr;</button>
+        </div>
+        <div class="date-picker-grid" id="picker-grid"></div>
+      </div>
+    </div>
+
+    <!-- Sidebar Toggle -->
+    <button class="sidebar-toggle" id="sidebar-toggle">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="3" y1="6" x2="21" y2="6"></line>
+        <line x1="3" y1="12" x2="21" y2="12"></line>
+        <line x1="3" y1="18" x2="21" y2="18"></line>
+      </svg>
+    </button>
+
+    <!-- Plan Mode -->
+    <div class="plan-mode">
+    <!-- Install hint -->
+    <div class="install-hint" id="install-hint">
+      <span class="install-hint-text" id="install-hint-text">Show every time I open a new tab</span>
+      <button class="install-hint-dismiss action-btn" id="install-hint-dismiss">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </div>
+
+    <!-- Install modal -->
+    <div class="install-modal-overlay" id="install-modal-overlay"></div>
+    <div class="install-modal" id="install-modal">
+      <button class="install-modal-close action-btn" id="install-modal-close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+      <div class="install-modal-title">Set as New Tab Page</div>
+      <div class="install-modal-browser" id="install-modal-browser"></div>
+      <div class="install-modal-steps" id="install-modal-steps"></div>
+    </div>
+
+    <!-- Timer -->
+    <div class="timer paused" id="timer">
+      <div class="timer-focus-wrapper">
+        <div class="timer-focus" id="timer-focus" contenteditable="true"></div>
+      </div>
+      <span class="timer-display" id="timer-display" contenteditable="true">20:00</span>
+      <button class="timer-btn timer-reset" id="timer-reset" title="Reset">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+          <path d="M3 3v5h5"></path>
+        </svg>
+      </button>
+      <button class="timer-btn timer-play-pause" id="timer-play-pause" title="Start">
+        <svg class="play-icon" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+          <polygon points="6,4 20,12 6,20"></polygon>
+        </svg>
+        <svg class="pause-icon" viewBox="0 0 24 24" fill="currentColor" stroke="none" style="display:none">
+          <rect x="6" y="4" width="4" height="16"></rect>
+          <rect x="14" y="4" width="4" height="16"></rect>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Theme Toggle -->
+    <button class="theme-toggle" id="theme-toggle" title="Toggle dark mode">
+      <svg class="sun-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <circle cx="12" cy="12" r="5"></circle>
+        <line x1="12" y1="1" x2="12" y2="3"></line>
+        <line x1="12" y1="21" x2="12" y2="23"></line>
+        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+        <line x1="1" y1="12" x2="3" y2="12"></line>
+        <line x1="21" y1="12" x2="23" y2="12"></line>
+        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+      </svg>
+      <svg class="moon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+      </svg>
+    </button>
+
+    <div class="center-content">
+      <div class="goal-section">
+        <div class="goal-label" id="goal-label">GOAL</div>
+        <input type="text" class="goal-input" id="goal-input">
+      </div>
+
+      <div class="nice-section">
+        <div class="nice-label" id="nice-label">NICE TO DO</div>
+        <div class="nice-items" id="nice-items"></div>
+      </div>
+    </div>
+  </div>
+  </div>
+
+  <script>
+    // State
+    let currentDate = new Date();
+    let sidebarOpen = false;
+
+    // Helpers
+    const formatDate = (date) => {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      const d = String(date.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    };
+    const displayDate = (date) => date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    const generateId = () => Math.random().toString(36).substr(2, 9);
+
+    // Storage Keys
+    const LIST_KEY = 'onething-list';
+    const planKey = (date) => `onething-plan-${formatDate(date)}`;
+
+    // Load/Save List
+    const loadList = () => {
+      try {
+        return JSON.parse(localStorage.getItem(LIST_KEY)) || [];
+      } catch {
+        return [];
+      }
+    };
+
+    const saveList = (items) => {
+      localStorage.setItem(LIST_KEY, JSON.stringify(items));
+    };
+
+    // Load/Save Plan
+    const loadPlan = (date) => {
+      try {
+        return JSON.parse(localStorage.getItem(planKey(date))) || {
+          goal: '',
+          niceToDo: [],
+          hygieneLeft: [],
+          hygieneRight: []
+        };
+      } catch {
+        return { goal: '', niceToDo: [], hygieneLeft: [], hygieneRight: [] };
+      }
+    };
+
+    const savePlan = (date, plan) => {
+      localStorage.setItem(planKey(date), JSON.stringify(plan));
+    };
+
+    // DOM Elements
+    const $goalInput = document.getElementById('goal-input');
+    const $goalLabel = document.getElementById('goal-label');
+    const $niceItems = document.getElementById('nice-items');
+    const $niceLabel = document.getElementById('nice-label');
+    const $themeToggle = document.getElementById('theme-toggle');
+    const $currentDate = document.getElementById('current-date');
+    const $prevDay = document.getElementById('prev-day');
+    const $nextDay = document.getElementById('next-day');
+    const $listItems = document.getElementById('list-items');
+    const $sidebar = document.getElementById('sidebar');
+    const $sidebarToggle = document.getElementById('sidebar-toggle');
+    const $datePicker = document.getElementById('date-picker');
+    const $datePickerOverlay = document.getElementById('date-picker-overlay');
+    const $pickerMonth = document.getElementById('picker-month');
+    const $pickerGrid = document.getElementById('picker-grid');
+    const $pickerPrevMonth = document.getElementById('picker-prev-month');
+    const $pickerNextMonth = document.getElementById('picker-next-month');
+
+    // Date picker state
+    let pickerDate = new Date();
+    let pickerOpen = false;
+
+    // Date picker functions
+    const openDatePicker = () => {
+      pickerDate = new Date(currentDate);
+      pickerOpen = true;
+      $datePicker.classList.add('open');
+      $datePickerOverlay.classList.add('open');
+      renderDatePicker();
+    };
+
+    const closeDatePicker = () => {
+      pickerOpen = false;
+      $datePicker.classList.remove('open');
+      $datePickerOverlay.classList.remove('open');
+    };
+
+    const renderDatePicker = () => {
+      const year = pickerDate.getFullYear();
+      const month = pickerDate.getMonth();
+
+      $pickerMonth.textContent = pickerDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+      const firstDay = new Date(year, month, 1);
+      const lastDay = new Date(year, month + 1, 0);
+      const startDay = firstDay.getDay();
+      const daysInMonth = lastDay.getDate();
+
+      const today = new Date();
+      const todayStr = formatDate(today);
+      const selectedStr = formatDate(currentDate);
+
+      let html = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+        .map(d => `<div class="date-picker-day-label">${d}</div>`).join('');
+
+      // Previous month days
+      const prevMonth = new Date(year, month, 0);
+      const prevDays = prevMonth.getDate();
+      for (let i = startDay - 1; i >= 0; i--) {
+        const day = prevDays - i;
+        const date = new Date(year, month - 1, day);
+        html += `<button class="date-picker-day other-month" data-date="${formatDate(date)}">${day}</button>`;
+      }
+
+      // Current month days
+      for (let day = 1; day <= daysInMonth; day++) {
+        const date = new Date(year, month, day);
+        const dateStr = formatDate(date);
+        const isToday = dateStr === todayStr;
+        const isSelected = dateStr === selectedStr;
+        const classes = ['date-picker-day'];
+        if (isToday) classes.push('today');
+        if (isSelected) classes.push('selected');
+        html += `<button class="${classes.join(' ')}" data-date="${dateStr}">${day}</button>`;
+      }
+
+      // Next month days
+      const totalCells = Math.ceil((startDay + daysInMonth) / 7) * 7;
+      const nextDays = totalCells - startDay - daysInMonth;
+      for (let day = 1; day <= nextDays; day++) {
+        const date = new Date(year, month + 1, day);
+        html += `<button class="date-picker-day other-month" data-date="${formatDate(date)}">${day}</button>`;
+      }
+
+      $pickerGrid.innerHTML = html;
+    };
+
+    $currentDate.addEventListener('click', openDatePicker);
+    $datePickerOverlay.addEventListener('click', closeDatePicker);
+
+    $pickerPrevMonth.addEventListener('click', () => {
+      pickerDate.setMonth(pickerDate.getMonth() - 1);
+      renderDatePicker();
+    });
+
+    $pickerNextMonth.addEventListener('click', () => {
+      pickerDate.setMonth(pickerDate.getMonth() + 1);
+      renderDatePicker();
+    });
+
+    $pickerGrid.addEventListener('click', (e) => {
+      if (e.target.classList.contains('date-picker-day')) {
+        const dateStr = e.target.dataset.date;
+        const [year, month, day] = dateStr.split('-').map(Number);
+        currentDate = new Date(year, month - 1, day);
+        closeDatePicker();
+        renderPlan();
+      }
+    });
+
+    // Sidebar toggle
+    const toggleSidebar = () => {
+      sidebarOpen = !sidebarOpen;
+      $sidebar.classList.toggle('open', sidebarOpen);
+      document.body.classList.toggle('sidebar-open', sidebarOpen);
+      if (sidebarOpen) renderList();
+    };
+
+    $sidebarToggle.addEventListener('click', toggleSidebar);
+
+    // Icon SVGs
+    const deleteIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
+    const checkIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+
+    // Render List (Todo)
+    const renderList = () => {
+      const items = loadList();
+      $listItems.innerHTML = items.map((item, i) => `
+        <li class="list-item ${item.done ? 'done' : ''}" data-index="${i}">
+          <span class="list-item-text" contenteditable="true">${escapeHtml(item.text)}</span>
+          <div class="item-actions">
+            <button class="action-btn check-btn">${checkIcon}</button>
+            <button class="action-btn delete-btn">${deleteIcon}</button>
+          </div>
+        </li>
+      `).join('') + `
+        <li class="list-placeholder">
+          <span class="list-placeholder-text" contenteditable="true"></span>
+        </li>
+      `;
+
+      // Attach event listeners to existing items
+      $listItems.querySelectorAll('.list-item').forEach((li, i) => {
+        const span = li.querySelector('.list-item-text');
+        const deleteBtn = li.querySelector('.delete-btn');
+        const checkBtn = li.querySelector('.check-btn');
+
+        checkBtn.addEventListener('click', () => {
+          const items = loadList();
+          items[i].done = !items[i].done;
+          saveList(items);
+          renderList();
+        });
+
+        deleteBtn.addEventListener('click', () => {
+          const items = loadList();
+          items.splice(i, 1);
+          saveList(items);
+          renderList();
+        });
+
+        span.addEventListener('input', () => {
+          const items = loadList();
+          items[i].text = span.textContent;
+          saveList(items);
+        });
+
+        span.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            // Focus the placeholder to add new item
+            $listItems.querySelector('.list-placeholder-text').focus();
+          } else if (e.key === 'Backspace' && span.textContent === '') {
+            e.preventDefault();
+            const items = loadList();
+            items.splice(i, 1);
+            saveList(items);
+            renderList();
+            // Focus previous item or placeholder
+            const prevSpan = $listItems.querySelectorAll('.list-item-text')[i - 1];
+            if (prevSpan) {
+              prevSpan.focus();
+            } else {
+              $listItems.querySelector('.list-placeholder-text').focus();
+            }
+          }
+        });
+      });
+
+      // Placeholder - click anywhere on row to focus
+      const $placeholder = $listItems.querySelector('.list-placeholder');
+      const $placeholderText = $placeholder.querySelector('.list-placeholder-text');
+
+      $placeholder.addEventListener('click', (e) => {
+        if (e.target !== $placeholderText) {
+          $placeholderText.focus();
+        }
+      });
+
+      $placeholderText.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          const text = $placeholderText.textContent.trim();
+          if (text) {
+            const items = loadList();
+            items.push({ id: generateId(), text, done: false });
+            saveList(items);
+            renderList();
+            setTimeout(() => {
+              $listItems.querySelector('.list-placeholder-text').focus();
+            }, 0);
+          }
+        }
+      });
+    };
+
+    // Render Plan Mode
+    const renderPlan = () => {
+      const plan = loadPlan(currentDate);
+
+      $goalInput.value = plan.goal || '';
+      $currentDate.textContent = displayDate(currentDate);
+
+      // Nice to do
+      renderNiceItems(plan.niceToDo);
+    };
+
+    // Helper to normalize nice items (support old string format and new object format)
+    const getNiceItemText = (item) => typeof item === 'string' ? item : item.text;
+    const getNiceItemDone = (item) => typeof item === 'string' ? false : item.done;
+    const setNiceItemText = (items, i, text) => {
+      if (typeof items[i] === 'string') {
+        items[i] = { text, done: false };
+      } else {
+        items[i].text = text;
+      }
+    };
+    const setNiceItemDone = (items, i, done) => {
+      if (typeof items[i] === 'string') {
+        items[i] = { text: items[i], done };
+      } else {
+        items[i].done = done;
+      }
+    };
+
+    const renderNiceItems = (items) => {
+      $niceItems.innerHTML = items.map((item, i) => `
+        <div class="nice-item-wrapper ${getNiceItemDone(item) ? 'done' : ''}" data-index="${i}">
+          <div class="nice-item" contenteditable="true">${escapeHtml(getNiceItemText(item))}</div>
+          <div class="item-actions">
+            <button class="action-btn check-btn">${checkIcon}</button>
+            <button class="action-btn delete-btn">${deleteIcon}</button>
+          </div>
+        </div>
+      `).join('');
+
+      // Attach listeners
+      $niceItems.querySelectorAll('.nice-item-wrapper').forEach((wrapper, i) => {
+        const el = wrapper.querySelector('.nice-item');
+        const deleteBtn = wrapper.querySelector('.delete-btn');
+        const checkBtn = wrapper.querySelector('.check-btn');
+
+        el.addEventListener('input', () => {
+          replaceArrowsInContentEditable(el);
+          const plan = loadPlan(currentDate);
+          setNiceItemText(plan.niceToDo, i, el.textContent);
+          savePlan(currentDate, plan);
+        });
+
+        deleteBtn.addEventListener('click', () => {
+          const plan = loadPlan(currentDate);
+          plan.niceToDo.splice(i, 1);
+          savePlan(currentDate, plan);
+          renderPlan();
+        });
+
+        checkBtn.addEventListener('click', () => {
+          const plan = loadPlan(currentDate);
+          const currentDone = getNiceItemDone(plan.niceToDo[i]);
+          setNiceItemDone(plan.niceToDo, i, !currentDone);
+          savePlan(currentDate, plan);
+          renderPlan();
+        });
+
+        el.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            const plan = loadPlan(currentDate);
+            plan.niceToDo.splice(i + 1, 0, { text: '', done: false });
+            savePlan(currentDate, plan);
+            renderPlan();
+            setTimeout(() => {
+              const newEl = $niceItems.querySelectorAll('.nice-item')[i + 1];
+              if (newEl) newEl.focus();
+            }, 0);
+          } else if (e.key === 'Backspace' && el.textContent === '') {
+            e.preventDefault();
+            const plan = loadPlan(currentDate);
+            plan.niceToDo.splice(i, 1);
+            savePlan(currentDate, plan);
+            renderPlan();
+            setTimeout(() => {
+              const prevEl = $niceItems.querySelectorAll('.nice-item')[i - 1];
+              if (prevEl) prevEl.focus();
+            }, 0);
+          } else if (e.key === 'Tab' && e.shiftKey) {
+            e.preventDefault();
+            if (i > 0) {
+              const prevEl = $niceItems.querySelectorAll('.nice-item')[i - 1];
+              if (prevEl) focusAtEnd(prevEl);
+            } else {
+              $goalInput.focus();
+              $goalInput.setSelectionRange($goalInput.value.length, $goalInput.value.length);
+            }
+          } else if ((e.key === 'Tab' && !e.shiftKey) || e.key === 'ArrowDown') {
+            e.preventDefault();
+            const allItems = $niceItems.querySelectorAll('.nice-item');
+            if (i < allItems.length - 1) {
+              focusAtEnd(allItems[i + 1]);
+            } else {
+              // Last item - create a new one
+              const plan = loadPlan(currentDate);
+              plan.niceToDo.push({ text: '', done: false });
+              savePlan(currentDate, plan);
+              renderPlan();
+              setTimeout(() => {
+                const newEl = $niceItems.querySelectorAll('.nice-item')[i + 1];
+                if (newEl) newEl.focus();
+              }, 0);
+            }
+          } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (i > 0) {
+              const prevEl = $niceItems.querySelectorAll('.nice-item')[i - 1];
+              if (prevEl) focusAtEnd(prevEl);
+            } else {
+              $goalInput.focus();
+              $goalInput.setSelectionRange($goalInput.value.length, $goalInput.value.length);
+            }
+          }
+        });
+      });
+    };
+
+    const escapeHtml = (text) => {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    };
+
+    const focusAtEnd = (el) => {
+      el.focus();
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      range.collapse(false);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    };
+
+    // Auto-replace arrows
+    const arrowReplacements = [
+      { pattern: '->', replacement: '→' },
+      { pattern: '=>', replacement: '⇒' }
+    ];
+
+    const replaceArrowsInInput = (input) => {
+      let val = input.value;
+      let pos = input.selectionStart;
+      for (const { pattern, replacement } of arrowReplacements) {
+        const idx = val.lastIndexOf(pattern, pos);
+        if (idx !== -1 && idx + pattern.length === pos) {
+          input.value = val.slice(0, idx) + replacement + val.slice(pos);
+          input.setSelectionRange(idx + 1, idx + 1);
+          return true;
+        }
+      }
+      return false;
+    };
+
+    const replaceArrowsInContentEditable = (el) => {
+      const sel = window.getSelection();
+      if (!sel.rangeCount) return false;
+
+      const range = sel.getRangeAt(0);
+      const node = range.startContainer;
+      if (node.nodeType !== Node.TEXT_NODE) return false;
+
+      const text = node.textContent;
+      const pos = range.startOffset;
+
+      for (const { pattern, replacement } of arrowReplacements) {
+        const idx = text.lastIndexOf(pattern, pos);
+        if (idx !== -1 && idx + pattern.length === pos) {
+          node.textContent = text.slice(0, idx) + replacement + text.slice(pos);
+          const newRange = document.createRange();
+          newRange.setStart(node, idx + 1);
+          newRange.collapse(true);
+          sel.removeAllRanges();
+          sel.addRange(newRange);
+          return true;
+        }
+      }
+      return false;
+    };
+
+    // Goal input
+    $goalInput.addEventListener('input', () => {
+      replaceArrowsInInput($goalInput);
+      const plan = loadPlan(currentDate);
+      plan.goal = $goalInput.value;
+      savePlan(currentDate, plan);
+    });
+
+    // Day Navigation
+    $prevDay.addEventListener('click', () => {
+      currentDate = new Date(currentDate);
+      currentDate.setDate(currentDate.getDate() - 1);
+      renderPlan();
+    });
+
+    $nextDay.addEventListener('click', () => {
+      currentDate = new Date(currentDate);
+      currentDate.setDate(currentDate.getDate() + 1);
+      renderPlan();
+    });
+
+    // Label click handlers
+    $goalLabel.addEventListener('click', () => {
+      $goalInput.focus();
+    });
+
+    $niceLabel.addEventListener('click', () => {
+      const plan = loadPlan(currentDate);
+      if (plan.niceToDo.length === 0) {
+        plan.niceToDo.push({ text: '', done: false });
+        savePlan(currentDate, plan);
+        renderPlan();
+      }
+      setTimeout(() => {
+        const firstItem = $niceItems.querySelector('.nice-item');
+        if (firstItem) firstItem.focus();
+      }, 0);
+    });
+
+    // Timer
+    const $timer = document.getElementById('timer');
+    const $timerDisplay = document.getElementById('timer-display');
+    const $timerPlayPause = document.getElementById('timer-play-pause');
+    const $timerReset = document.getElementById('timer-reset');
+    const $playIcon = $timerPlayPause.querySelector('.play-icon');
+    const $pauseIcon = $timerPlayPause.querySelector('.pause-icon');
+    const $timerFocus = document.getElementById('timer-focus');
+
+    const TIMER_DURATION_KEY = 'onething-timer-duration';
+    const TIMER_SECONDS_KEY = 'onething-timer-seconds';
+    const TIMER_RUNNING_KEY = 'onething-timer-running';
+    const TIMER_FOCUS_KEY = 'onething-timer-focus';
+
+    // Load saved values
+    const savedDuration = localStorage.getItem(TIMER_DURATION_KEY);
+    const savedSeconds = localStorage.getItem(TIMER_SECONDS_KEY);
+    const savedRunning = localStorage.getItem(TIMER_RUNNING_KEY);
+    const savedFocus = localStorage.getItem(TIMER_FOCUS_KEY);
+
+    let timerDuration = savedDuration ? parseInt(savedDuration, 10) : 20 * 60;
+    let timerSeconds = savedSeconds ? parseInt(savedSeconds, 10) : timerDuration;
+
+    if (savedFocus) {
+      $timerFocus.textContent = savedFocus;
+    }
+    let timerInterval = null;
+    let timerRunning = false;
+
+    const formatTimer = (seconds) => {
+      const m = Math.floor(seconds / 60);
+      const s = seconds % 60;
+      return `${m}:${String(s).padStart(2, '0')}`;
+    };
+
+    const parseTimer = (str) => {
+      const cleaned = str.trim();
+      // Try to parse MM:SS or M:SS
+      const match = cleaned.match(/^(\d+):(\d{1,2})$/);
+      if (match) {
+        const m = parseInt(match[1], 10);
+        const s = parseInt(match[2], 10);
+        if (s < 60) return m * 60 + s;
+      }
+      // Try to parse as just minutes
+      const mins = parseInt(cleaned, 10);
+      if (!isNaN(mins) && mins > 0) return mins * 60;
+      return null;
+    };
+
+    const updateTimerDisplay = () => {
+      $timerDisplay.textContent = formatTimer(timerSeconds);
+      localStorage.setItem(TIMER_SECONDS_KEY, timerSeconds);
+      updateResetVisibility();
+    };
+
+    const updateResetVisibility = () => {
+      if (timerSeconds < timerDuration) {
+        $timer.classList.add('can-reset');
+      } else {
+        $timer.classList.remove('can-reset');
+      }
+    };
+
+    const startTimer = (focusField = true) => {
+      if (timerSeconds <= 0) return;
+      timerRunning = true;
+      $timer.classList.remove('paused');
+      $timer.classList.add('running');
+      $playIcon.style.display = 'none';
+      $pauseIcon.style.display = 'block';
+      $timerPlayPause.title = 'Pause';
+      $timerDisplay.contentEditable = 'false';
+      localStorage.setItem(TIMER_RUNNING_KEY, 'true');
+
+      // Focus the focus field if empty (only on manual start)
+      if (focusField && !$timerFocus.textContent.trim()) {
+        $timerFocus.focus();
+      }
+
+      timerInterval = setInterval(() => {
+        timerSeconds--;
+        updateTimerDisplay();
+        if (timerSeconds <= 0) {
+          pauseTimer();
+        }
+      }, 1000);
+    };
+
+    const pauseTimer = () => {
+      timerRunning = false;
+      $timer.classList.remove('running');
+      $timer.classList.add('paused');
+      $playIcon.style.display = 'block';
+      $pauseIcon.style.display = 'none';
+      $timerPlayPause.title = 'Start';
+      $timerDisplay.contentEditable = 'true';
+      localStorage.setItem(TIMER_RUNNING_KEY, 'false');
+
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+      }
+      updateResetVisibility();
+    };
+
+    const resetTimer = () => {
+      pauseTimer();
+      timerSeconds = timerDuration;
+      updateTimerDisplay();
+    };
+
+    $timerPlayPause.addEventListener('click', () => {
+      if (timerRunning) {
+        pauseTimer();
+      } else {
+        startTimer(true);
+      }
+    });
+
+    $timerReset.addEventListener('click', resetTimer);
+
+    $timerDisplay.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        $timerDisplay.blur();
+      }
+    });
+
+    $timerDisplay.addEventListener('blur', () => {
+      const parsed = parseTimer($timerDisplay.textContent);
+      if (parsed !== null && parsed > 0) {
+        timerDuration = parsed;
+        timerSeconds = parsed;
+        localStorage.setItem(TIMER_DURATION_KEY, timerDuration);
+      }
+      updateTimerDisplay();
+    });
+
+    $timerFocus.addEventListener('input', () => {
+      localStorage.setItem(TIMER_FOCUS_KEY, $timerFocus.textContent);
+    });
+
+    updateTimerDisplay();
+
+    // Restore running state
+    if (savedRunning === 'true' && timerSeconds > 0) {
+      startTimer(false);
+    }
+
+    // Install hint
+    const INSTALL_DISMISSED_KEY = 'onething-install-dismissed';
+    const $installHint = document.getElementById('install-hint');
+    const $installHintText = document.getElementById('install-hint-text');
+    const $installHintDismiss = document.getElementById('install-hint-dismiss');
+    const $installModal = document.getElementById('install-modal');
+    const $installModalOverlay = document.getElementById('install-modal-overlay');
+    const $installModalClose = document.getElementById('install-modal-close');
+    const $installModalBrowser = document.getElementById('install-modal-browser');
+    const $installModalSteps = document.getElementById('install-modal-steps');
+
+    // Check if dismissed
+    if (localStorage.getItem(INSTALL_DISMISSED_KEY) === 'true') {
+      $installHint.classList.add('hidden');
+    }
+
+    // Detect browser
+    const detectBrowser = () => {
+      const ua = navigator.userAgent;
+      if (ua.includes('Dia/')) return 'Dia';
+      if (ua.includes('Arc/')) return 'Arc';
+      if (ua.includes('Brave/')) return 'Brave';
+      if (ua.includes('Edg/')) return 'Edge';
+      if (ua.includes('Chrome/')) return 'Chrome';
+      if (ua.includes('Safari/') && !ua.includes('Chrome')) return 'Safari';
+      if (ua.includes('Firefox/')) return 'Firefox';
+      return 'your browser';
+    };
+
+    const getInstructions = (browser) => {
+      const url = window.location.href;
+
+      const instructions = {
+        'Chrome': `<ol>
+          <li>Install the "New Tab Redirect" extension from Chrome Web Store</li>
+          <li>Click the extension icon and set the URL to:<br><code>${url}</code></li>
+          <li>Open a new tab to verify it works</li>
+        </ol>`,
+        'Brave': `<ol>
+          <li>Install the "New Tab Redirect" extension from Chrome Web Store</li>
+          <li>Click the extension icon and set the URL to:<br><code>${url}</code></li>
+          <li>Open a new tab to verify it works</li>
+        </ol>`,
+        'Edge': `<ol>
+          <li>Install the "New Tab Redirect" extension from Edge Add-ons</li>
+          <li>Click the extension icon and set the URL to:<br><code>${url}</code></li>
+          <li>Open a new tab to verify it works</li>
+        </ol>`,
+        'Arc': `<ol>
+          <li>Open Arc Settings (⌘ + ,)</li>
+          <li>Go to "Links" section</li>
+          <li>Under "New Tab", select "Custom URL"</li>
+          <li>Paste: <code>${url}</code></li>
+        </ol>`,
+        'Dia': `<ol>
+          <li>Open Dia Preferences</li>
+          <li>Go to the "General" tab</li>
+          <li>Set "New tabs open with" to "Custom URL"</li>
+          <li>Paste: <code>${url}</code></li>
+        </ol>`,
+        'Safari': `<ol>
+          <li>Open Safari → Settings (⌘ + ,)</li>
+          <li>Go to "General" tab</li>
+          <li>Set "New tabs open with" to "Homepage"</li>
+          <li>Set Homepage to: <code>${url}</code></li>
+        </ol>`,
+        'Firefox': `<ol>
+          <li>Install the "New Tab Override" extension</li>
+          <li>Set the custom URL to:<br><code>${url}</code></li>
+          <li>Open a new tab to verify it works</li>
+        </ol>`,
+      };
+
+      return instructions[browser] || `<ol>
+        <li>Open your browser's settings</li>
+        <li>Find the "New Tab" or "Homepage" setting</li>
+        <li>Set it to: <code>${url}</code></li>
+      </ol>`;
+    };
+
+    const openInstallModal = () => {
+      const browser = detectBrowser();
+      $installModalBrowser.textContent = browser;
+      $installModalSteps.innerHTML = getInstructions(browser);
+      $installModal.classList.add('open');
+      $installModalOverlay.classList.add('open');
+    };
+
+    const closeInstallModal = () => {
+      $installModal.classList.remove('open');
+      $installModalOverlay.classList.remove('open');
+    };
+
+    $installHintText.addEventListener('click', openInstallModal);
+    $installHintDismiss.addEventListener('click', () => {
+      localStorage.setItem(INSTALL_DISMISSED_KEY, 'true');
+      $installHint.classList.add('hidden');
+    });
+    $installModalClose.addEventListener('click', closeInstallModal);
+    $installModalOverlay.addEventListener('click', closeInstallModal);
+
+    // Theme toggle
+    const THEME_KEY = 'onething-theme';
+
+    const loadTheme = () => {
+      const theme = localStorage.getItem(THEME_KEY);
+      if (theme === 'dark') {
+        document.body.classList.add('dark');
+      }
+    };
+
+    const toggleTheme = () => {
+      const isDark = document.body.classList.toggle('dark');
+      localStorage.setItem(THEME_KEY, isDark ? 'dark' : 'light');
+    };
+
+    $themeToggle.addEventListener('click', toggleTheme);
+    loadTheme();
+
+    // Initial render
+    renderPlan();
+  </script>
+</body>
+</html>
