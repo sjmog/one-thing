@@ -1,0 +1,14 @@
+{
+  "manifest_version": 3,
+  "name": "One Thing",
+  "description": "A minimal new tab page for daily planning with goal tracking and pomodoro timer",
+  "version": "1.0.0",
+  "chrome_url_overrides": {
+    "newtab": "newtab.html"
+  },
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  }
+}
