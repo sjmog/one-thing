@@ -1032,6 +1032,32 @@
       height: 16px;
     }
 
+    /* Mobile: move content to top and allow full width */
+    @media (max-width: 600px) {
+      .center-content {
+        top: 80px;
+        left: 0;
+        right: 0;
+        transform: none;
+        width: 100%;
+        max-width: 100%;
+        padding: 20px;
+      }
+
+      .goal-input {
+        font-size: 28px;
+        max-width: 100%;
+      }
+
+      .nice-section {
+        max-width: 100%;
+      }
+
+      .timer {
+        display: none;
+      }
+    }
+
     /* Sync UI */
     .sync-toggle {
       position: fixed;
