@@ -1210,7 +1210,7 @@
       margin-bottom: 16px;
     }
 
-    .sync-modal-heading {
+    .sync-modal-title {
       font-size: 20px;
       font-weight: 600;
       color: #292929;
@@ -1309,7 +1309,7 @@
       color: #818179;
     }
 
-    body.dark .sync-modal-heading {
+    body.dark .sync-modal-title {
       color: #fcfcf8;
     }
 
@@ -1464,7 +1464,7 @@
       <button class="sync-modal-close action-btn" id="sync-modal-close">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
       </button>
-      <div class="sync-modal-heading" id="sync-modal-heading">Sync Across Devices</div>
+      <div class="sync-modal-title" id="sync-modal-title">Sync Across Devices</div>
       <div class="sync-modal-content" id="sync-modal-content">
         <p style="margin-bottom: 16px;">Enter a passphrase to sync your data across devices. Use the same passphrase on all your devices.</p>
         <input type="text" class="sync-input" id="sync-passphrase" placeholder="Enter your passphrase..." autocomplete="off">
@@ -2419,7 +2419,7 @@
     const $syncModal = document.getElementById('sync-modal');
     const $syncModalOverlay = document.getElementById('sync-modal-overlay');
     const $syncModalClose = document.getElementById('sync-modal-close');
-    const $syncModalHeading = document.getElementById('sync-modal-heading');
+    const $syncModalTitle = document.getElementById('sync-modal-title');
     const $syncModalContent = document.getElementById('sync-modal-content');
     const $syncPassphrase = document.getElementById('sync-passphrase');
     const $syncConnectBtn = document.getElementById('sync-connect-btn');
@@ -2479,19 +2479,30 @@
       hideSyncStatus();
       if (syncEnabled && syncPassphrase) {
         // Show connected state
-        $syncModalHeading.textContent = 'Sync Connected';
+        $syncModalTitle.textContent = 'Sync Connected';
         $syncModalContent.innerHTML = `
           <p style="margin-bottom: 16px;">Your data is syncing across devices.</p>
-          <div class="sync-status info" style="display: block; margin-bottom: 16px;">
-            Last sync: ${getLastSyncDisplay()}
+          <div class="sync-status info" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+            <span id="sync-last-text">Last sync: ${getLastSyncDisplay()}</span>
+            <button id="sync-now-btn" style="background: none; border: none; cursor: pointer; padding: 4px; color: inherit; display: flex; align-items: center;">
+              <svg id="sync-refresh-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 2v6h-6"></path>
+                <path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path>
+                <path d="M3 22v-6h6"></path>
+                <path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path>
+              </svg>
+            </button>
           </div>
-          <button class="sync-btn" id="sync-now-btn">Sync Now</button>
           <button class="sync-btn sync-btn-secondary" id="sync-disconnect-btn">Disconnect</button>
         `;
-        document.getElementById('sync-now-btn').addEventListener('click', async () => {
-          showSyncStatus('Syncing...', 'info');
+        document.getElementById('sync-now-btn').addEventListener('click', async (e) => {
+          const icon = document.getElementById('sync-refresh-icon');
+          const textEl = document.getElementById('sync-last-text');
+          icon.style.animation = 'spin 1s linear infinite';
+          textEl.textContent = 'Syncing...';
           await performSync(true);
-          showSyncStatus('Sync complete!', 'success');
+          icon.style.animation = '';
+          textEl.textContent = 'Last sync: ' + getLastSyncDisplay();
         });
         document.getElementById('sync-disconnect-btn').addEventListener('click', () => {
           syncEnabled = false;
@@ -2504,7 +2515,7 @@
         });
       } else {
         // Show connect form
-        $syncModalHeading.textContent = 'Sync Across Devices';
+        $syncModalTitle.textContent = 'Sync Across Devices';
         $syncModalContent.innerHTML = `
           <p style="margin-bottom: 16px;">Enter a passphrase to sync your data across devices. Use the same passphrase on all your devices.</p>
           <input type="text" class="sync-input" id="sync-passphrase" placeholder="Enter your passphrase..." autocomplete="off">
