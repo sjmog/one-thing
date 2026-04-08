@@ -4,9 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>One Thing</title>
-  <link rel="icon" type="image/x-icon" href="favicon.ico">
-  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
-  <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png">
+  <link rel="icon" type="image/x-icon" href="favicon.ico" id="favicon-ico">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png" id="favicon-32">
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png" id="favicon-16">
   <style>
     :root {
       --bg-primary: #f7f7f2;
@@ -1951,16 +1951,26 @@
     // Theme toggle
     const THEME_KEY = 'onething-theme';
 
+    const updateFavicon = (isDark) => {
+      const suffix = isDark ? '-dark' : '';
+      document.getElementById('favicon-ico').href = `favicon${suffix}.ico`;
+      document.getElementById('favicon-32').href = `favicon-32${suffix}.png`;
+      document.getElementById('favicon-16').href = `favicon-16${suffix}.png`;
+    };
+
     const loadTheme = () => {
       const theme = localStorage.getItem(THEME_KEY);
-      if (theme === 'dark') {
+      const isDark = theme === 'dark';
+      if (isDark) {
         document.body.classList.add('dark');
       }
+      updateFavicon(isDark);
     };
 
     const toggleTheme = () => {
       const isDark = document.body.classList.toggle('dark');
       localStorage.setItem(THEME_KEY, isDark ? 'dark' : 'light');
+      updateFavicon(isDark);
     };
 
     $themeToggle.addEventListener('click', toggleTheme);
