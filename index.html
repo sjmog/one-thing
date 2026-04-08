@@ -2362,6 +2362,7 @@
     let syncPassphrase = localStorage.getItem(SYNC_PASSPHRASE_KEY) || '';
     let syncDebounceTimer = null;
     let isSyncing = false;
+    let isApplyingSync = false;
 
     // Keys to sync (all onething-* keys except sync config)
     const getSyncableKeys = () => {
@@ -2565,9 +2566,11 @@
       const result = await response.json();
 
       // Apply remote changes (last-write-wins)
+      isApplyingSync = true;
       for (const item of result.data) {
         localStorage.setItem(item.key, item.value);
       }
+      isApplyingSync = false;
 
       localStorage.setItem(SYNC_LAST_SYNC_KEY, String(result.serverTime));
 
@@ -2594,9 +2597,11 @@
 
         if (result && result.data && result.data.length > 0) {
           // Apply remote changes
+          isApplyingSync = true;
           for (const item of result.data) {
             localStorage.setItem(item.key, item.value);
           }
+          isApplyingSync = false;
           // Re-render UI
           renderPlan();
           if (sidebarOpen) renderList();
@@ -2627,7 +2632,7 @@
     const originalSetItem = localStorage.setItem.bind(localStorage);
     localStorage.setItem = (key, value) => {
       originalSetItem(key, value);
-      if (key.startsWith('onething-') && !key.startsWith('onething-sync-') &&
+      if (!isApplyingSync && key.startsWith('onething-') && !key.startsWith('onething-sync-') &&
           key !== 'onething-timer-running' && key !== 'onething-timer-seconds') {
         queueSync();
       }
