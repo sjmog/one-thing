@@ -1294,6 +1294,7 @@
         });
 
         span.addEventListener('input', () => {
+          replaceArrowsInContentEditable(span);
           const items = loadList();
           items[i].text = span.textContent;
           saveList(items);
@@ -1329,6 +1330,10 @@
         if (e.target !== $placeholderText) {
           $placeholderText.focus();
         }
+      });
+
+      $placeholderText.addEventListener('input', () => {
+        replaceArrowsInContentEditable($placeholderText);
       });
 
       $placeholderText.addEventListener('keydown', (e) => {
