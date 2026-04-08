@@ -22,22 +22,22 @@
     "files": [
       "main.js",
       "preload.js",
+      "icon.png",
       "../index.html",
       "../favicon.ico",
       "../favicon-16.png",
-      "../favicon-32.png",
-      "../extension/icon128.png"
+      "../favicon-32.png"
     ],
     "mac": {
-      "icon": "../extension/icon128.png",
+      "icon": "icon.png",
       "target": "dmg"
     },
     "win": {
-      "icon": "../extension/icon128.png",
+      "icon": "icon.png",
       "target": "nsis"
     },
     "linux": {
-      "icon": "../extension/icon128.png",
+      "icon": "icon.png",
       "target": "AppImage"
     },
     "directories": {
