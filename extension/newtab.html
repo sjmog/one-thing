@@ -1060,6 +1060,11 @@
       .header {
         gap: 8px;
       }
+
+      .item-actions,
+      .goal-actions {
+        display: none !important;
+      }
     }
 
     /* Sync UI */
@@ -2679,6 +2684,57 @@
       setTimeout(() => performSync(), 1000);
       // Auto-sync every 10 seconds
       setInterval(() => performSync(), 10000);
+    }
+
+    // ===== MOBILE SWIPE TO COMPLETE =====
+    const isMobile = window.matchMedia('(max-width: 600px)').matches;
+
+    if (isMobile) {
+      let touchStartX = 0;
+      let touchStartY = 0;
+      let swipeTarget = null;
+
+      document.addEventListener('touchstart', (e) => {
+        const target = e.target.closest('.goal-wrapper, .nice-item-wrapper');
+        if (target) {
+          touchStartX = e.touches[0].clientX;
+          touchStartY = e.touches[0].clientY;
+          swipeTarget = target;
+        }
+      }, { passive: true });
+
+      document.addEventListener('touchend', (e) => {
+        if (!swipeTarget) return;
+
+        const touchEndX = e.changedTouches[0].clientX;
+        const touchEndY = e.changedTouches[0].clientY;
+        const deltaX = touchEndX - touchStartX;
+        const deltaY = Math.abs(touchEndY - touchStartY);
+
+        // Swipe right: deltaX > 50px and mostly horizontal
+        if (deltaX > 50 && deltaY < 50) {
+          if (swipeTarget.classList.contains('goal-wrapper')) {
+            // Toggle goal completion
+            const plan = loadPlan(currentDate);
+            plan.goalCompleted = !plan.goalCompleted;
+            savePlan(currentDate, plan);
+            $goalSection.classList.toggle('completed', plan.goalCompleted);
+            if (plan.goalCompleted) triggerConfetti();
+          } else if (swipeTarget.classList.contains('nice-item-wrapper')) {
+            // Toggle nice item completion
+            const index = parseInt(swipeTarget.dataset.index, 10);
+            const plan = loadPlan(currentDate);
+            if (plan.niceToDo[index] !== undefined) {
+              const currentDone = getNiceItemDone(plan.niceToDo[index]);
+              setNiceItemDone(plan.niceToDo, index, !currentDone);
+              savePlan(currentDate, plan);
+              renderPlan();
+            }
+          }
+        }
+
+        swipeTarget = null;
+      }, { passive: true });
     }
   </script>
 </body>
