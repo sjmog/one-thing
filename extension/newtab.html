@@ -4,6 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>One Thing</title>
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png">
   <style>
     * {
       box-sizing: border-box;
@@ -1820,12 +1823,8 @@
     const $installModalBrowser = document.getElementById('install-modal-browser');
     const $installModalSteps = document.getElementById('install-modal-steps');
 
-    // Check if dismissed
     // Always hide install hint in extension
     $installHint.classList.add('hidden');
-    if (false && localStorage.getItem(INSTALL_DISMISSED_KEY) === 'true') {
-      $installHint.classList.add('hidden');
-    }
 
     // Detect browser
     const detectBrowser = () => {
