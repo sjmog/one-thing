@@ -1085,6 +1085,10 @@
       body.sidebar-open .center-content {
         display: none;
       }
+
+      .sidebar-header {
+        padding-left: 56px;
+      }
     }
 
     /* Sync UI */
@@ -1451,7 +1455,6 @@
       <button class="sync-modal-close action-btn" id="sync-modal-close">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
       </button>
-      <div class="sync-modal-title">Sync</div>
       <div class="sync-modal-heading" id="sync-modal-heading">Sync Across Devices</div>
       <div class="sync-modal-content" id="sync-modal-content">
         <p style="margin-bottom: 16px;">Enter a passphrase to sync your data across devices. Use the same passphrase on all your devices.</p>
@@ -2463,12 +2466,10 @@
     };
 
     // Open sync modal
-    const $syncModalTitle = document.querySelector('.sync-modal-title');
     const openSyncModal = () => {
       hideSyncStatus();
       if (syncEnabled && syncPassphrase) {
         // Show connected state
-        $syncModalTitle.textContent = 'SYNC CONNECTED';
         $syncModalHeading.textContent = 'Sync Connected';
         $syncModalContent.innerHTML = `
           <p style="margin-bottom: 16px;">Your data is syncing across devices.</p>
@@ -2494,7 +2495,6 @@
         });
       } else {
         // Show connect form
-        $syncModalTitle.textContent = 'SYNC ACROSS DEVICES';
         $syncModalHeading.textContent = 'Sync Across Devices';
         $syncModalContent.innerHTML = `
           <p style="margin-bottom: 16px;">Enter a passphrase to sync your data across devices. Use the same passphrase on all your devices.</p>
