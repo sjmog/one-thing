@@ -810,11 +810,10 @@
     }
 
     .goal-wrapper {
-      position: relative;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 16px;
+      gap: 8px;
     }
 
     .goal-input {
@@ -823,7 +822,6 @@
       border: none;
       background: transparent;
       text-align: center;
-      width: 100%;
       max-width: 600px;
       color: #292929;
       outline: none;
@@ -836,10 +834,7 @@
     }
 
     .goal-actions {
-      position: absolute;
-      left: calc(100% + 12px);
-      top: 50%;
-      transform: translateY(-50%);
+      flex-shrink: 0;
     }
 
     /* Confetti Canvas */
