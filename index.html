@@ -2642,6 +2642,8 @@
     if (syncEnabled && syncPassphrase) {
       updateSyncToggle('synced');
       setTimeout(() => performSync(), 1000);
+      // Auto-sync every 10 seconds
+      setInterval(() => performSync(), 10000);
     }
   </script>
 </body>
