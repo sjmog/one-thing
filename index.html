@@ -2738,7 +2738,7 @@
       let swipeTarget = null;
 
       document.addEventListener('touchstart', (e) => {
-        const target = e.target.closest('.goal-wrapper, .nice-item-wrapper');
+        const target = e.target.closest('.goal-wrapper, .nice-item-wrapper, .list-item');
         if (target) {
           touchStartX = e.touches[0].clientX;
           touchStartY = e.touches[0].clientY;
@@ -2785,6 +2785,22 @@
                 setNiceItemDone(plan.niceToDo, index, false);
                 savePlan(currentDate, plan);
                 renderPlan();
+              }
+            }
+          } else if (swipeTarget.classList.contains('list-item')) {
+            const index = parseInt(swipeTarget.dataset.index, 10);
+            const items = loadList();
+            if (items[index] !== undefined) {
+              const currentDone = items[index].done;
+              // Swipe right to complete, swipe left to uncomplete
+              if (swipeRight && !currentDone) {
+                items[index].done = true;
+                saveList(items);
+                renderList();
+              } else if (!swipeRight && currentDone) {
+                items[index].done = false;
+                saveList(items);
+                renderList();
               }
             }
           }
