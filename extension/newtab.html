@@ -1118,7 +1118,7 @@
   <script>
     // State
     let currentDate = new Date();
-    let sidebarOpen = false;
+    let sidebarOpen = localStorage.getItem('sidebarOpen') === 'true';
 
     // Helpers
     const formatDate = (date) => {
@@ -1282,6 +1282,7 @@
     // Sidebar toggle
     const toggleSidebar = () => {
       sidebarOpen = !sidebarOpen;
+      localStorage.setItem('sidebarOpen', sidebarOpen);
       $sidebar.classList.toggle('open', sidebarOpen);
       document.body.classList.toggle('sidebar-open', sidebarOpen);
       if (sidebarOpen) renderList();
@@ -2003,6 +2004,13 @@
 
     // Initial render
     renderPlan();
+
+    // Apply initial sidebar state
+    if (sidebarOpen) {
+      $sidebar.classList.add('open');
+      document.body.classList.add('sidebar-open');
+      renderList();
+    }
   </script>
 </body>
 </html>
