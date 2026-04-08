@@ -1070,8 +1070,16 @@
         width: 100%;
       }
 
+      .sidebar-toggle {
+        left: 12px;
+      }
+
+      .theme-toggle {
+        right: 12px;
+      }
+
       body.sidebar-open .sidebar-toggle {
-        left: 20px;
+        left: 12px;
       }
 
       body.sidebar-open .main-content {
@@ -1087,7 +1095,8 @@
       }
 
       .sidebar-header {
-        padding-left: 56px;
+        padding-left: 48px;
+        padding-top: 18px;
       }
     }
 
@@ -2734,24 +2743,38 @@
         const deltaX = touchEndX - touchStartX;
         const deltaY = Math.abs(touchEndY - touchStartY);
 
-        // Swipe right: deltaX > 50px and mostly horizontal
-        if (deltaX > 50 && deltaY < 50) {
+        // Swipe right: complete item, Swipe left: uncomplete item
+        if (Math.abs(deltaX) > 50 && deltaY < 50) {
+          const swipeRight = deltaX > 0;
+
           if (swipeTarget.classList.contains('goal-wrapper')) {
-            // Toggle goal completion
             const plan = loadPlan(currentDate);
-            plan.goalCompleted = !plan.goalCompleted;
-            savePlan(currentDate, plan);
-            $goalSection.classList.toggle('completed', plan.goalCompleted);
-            if (plan.goalCompleted) triggerConfetti();
+            // Swipe right to complete, swipe left to uncomplete
+            if (swipeRight && !plan.goalCompleted) {
+              plan.goalCompleted = true;
+              savePlan(currentDate, plan);
+              $goalSection.classList.add('completed');
+              triggerConfetti();
+            } else if (!swipeRight && plan.goalCompleted) {
+              plan.goalCompleted = false;
+              savePlan(currentDate, plan);
+              $goalSection.classList.remove('completed');
+            }
           } else if (swipeTarget.classList.contains('nice-item-wrapper')) {
-            // Toggle nice item completion
             const index = parseInt(swipeTarget.dataset.index, 10);
             const plan = loadPlan(currentDate);
             if (plan.niceToDo[index] !== undefined) {
               const currentDone = getNiceItemDone(plan.niceToDo[index]);
-              setNiceItemDone(plan.niceToDo, index, !currentDone);
-              savePlan(currentDate, plan);
-              renderPlan();
+              // Swipe right to complete, swipe left to uncomplete
+              if (swipeRight && !currentDone) {
+                setNiceItemDone(plan.niceToDo, index, true);
+                savePlan(currentDate, plan);
+                renderPlan();
+              } else if (!swipeRight && currentDone) {
+                setNiceItemDone(plan.niceToDo, index, false);
+                savePlan(currentDate, plan);
+                renderPlan();
+              }
             }
           }
         }
