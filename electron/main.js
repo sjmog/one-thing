@@ -11,6 +11,8 @@ function createWindow() {
     minWidth: 800,
     minHeight: 600,
     title: 'One Thing',
+    titleBarStyle: 'hiddenInset',
+    trafficLightPosition: { x: 16, y: 16 },
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -18,8 +20,12 @@ function createWindow() {
     }
   });
 
-  // Load the index.html from parent directory
-  mainWindow.loadFile(path.join(__dirname, '..', 'index.html'));
+  // Load the index.html - path differs between dev and production
+  const isDev = !app.isPackaged;
+  const indexPath = isDev
+    ? path.join(__dirname, '..', 'index.html')
+    : path.join(process.resourcesPath, 'index.html');
+  mainWindow.loadFile(indexPath);
 
   mainWindow.on('closed', () => {
     mainWindow = null;

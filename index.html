@@ -101,6 +101,7 @@
       align-items: center;
       gap: 16px;
       padding: 16px;
+      padding-top: 10px;
       z-index: 10;
       transition: left 0.2s ease;
     }
@@ -251,7 +252,7 @@
     /* Sidebar Toggle */
     .sidebar-toggle {
       position: fixed;
-      top: 16px;
+      top: 8px;
       left: 20px;
       z-index: 20;
       background: none;
@@ -260,12 +261,22 @@
       cursor: pointer;
       font-size: 20px;
       padding: 4px 8px;
+      padding-top: 6px;
       border-radius: 8px;
       transition: left 0.2s ease, color 0s, background 0s;
     }
 
     .sidebar-toggle:hover {
       color: #72726e;
+    }
+
+    /* Electron: shift sidebar toggle to avoid traffic lights */
+    body.is-electron .sidebar-toggle {
+      left: 80px;
+    }
+
+    body.is-electron.sidebar-open .sidebar-toggle {
+      left: 80px;
     }
 
     /* Sidebar */
@@ -290,6 +301,7 @@
 
     .sidebar-header {
       padding: 16px 20px;
+      padding-top: 12px;
     }
 
     .sidebar-title {
@@ -375,12 +387,13 @@
     /* Theme Toggle */
     .theme-toggle {
       position: fixed;
-      top: 16px;
+      top: 8px;
       right: 20px;
       background: none;
       border: none;
       cursor: pointer;
       padding: 4px 8px;
+      padding-top: 6px;
       color: #acada8;
       transition: color 0s;
       z-index: 10;
@@ -1103,12 +1116,13 @@
     /* Sync UI */
     .sync-toggle {
       position: fixed;
-      top: 16px;
+      top: 8px;
       right: 52px;
       background: none;
       border: none;
       cursor: pointer;
       padding: 4px 8px;
+      padding-top: 6px;
       color: #acada8;
       transition: color 0s;
       z-index: 10;
@@ -2283,6 +2297,9 @@
 
     // Check if dismissed or running in Electron
     const isElectron = window.electronAPI?.isElectron || false;
+    if (isElectron) {
+      document.body.classList.add('is-electron');
+    }
     if (localStorage.getItem(INSTALL_DISMISSED_KEY) === 'true' || isElectron) {
       $installHint.classList.add('hidden');
     }

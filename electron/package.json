@@ -1,6 +1,6 @@
 {
   "name": "one-thing",
-  "version": "1.4.2",
+  "version": "1.4.3",
   "description": "One Thing - Daily goal planning app",
   "main": "main.js",
   "scripts": {
@@ -22,12 +22,29 @@
     "files": [
       "main.js",
       "preload.js",
-      "icon.png",
-      "../index.html",
-      "../favicon.ico",
-      "../favicon-16.png",
-      "../favicon-32.png",
-      "../FunnelSans.woff2"
+      "icon.png"
+    ],
+    "extraResources": [
+      {
+        "from": "../index.html",
+        "to": "index.html"
+      },
+      {
+        "from": "../favicon.ico",
+        "to": "favicon.ico"
+      },
+      {
+        "from": "../favicon-16.png",
+        "to": "favicon-16.png"
+      },
+      {
+        "from": "../favicon-32.png",
+        "to": "favicon-32.png"
+      },
+      {
+        "from": "../FunnelSans.woff2",
+        "to": "FunnelSans.woff2"
+      }
     ],
     "mac": {
       "icon": "icon.png",
