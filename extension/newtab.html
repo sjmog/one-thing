@@ -1032,6 +1032,271 @@
       height: 16px;
     }
 
+    /* Sync UI */
+    .sync-toggle {
+      position: fixed;
+      top: 16px;
+      right: 56px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 8px;
+      color: #acada8;
+      transition: color 0s;
+      z-index: 10;
+    }
+
+    .sync-toggle:hover {
+      color: #72726e;
+    }
+
+    .sync-toggle svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    .sync-toggle.syncing svg {
+      animation: spin 1s linear infinite;
+    }
+
+    .sync-toggle.synced {
+      color: #788c15;
+    }
+
+    .sync-toggle.error {
+      color: #bd4a30;
+    }
+
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    body.dark .sync-toggle {
+      color: #818179;
+    }
+
+    body.dark .sync-toggle:hover {
+      color: #72726e;
+    }
+
+    body.dark .sync-toggle.synced {
+      color: #b2c248;
+    }
+
+    body.dark .sync-toggle.error {
+      color: #ec7558;
+    }
+
+    /* Sync Modal */
+    .sync-modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.4);
+      z-index: 100;
+      display: none;
+    }
+
+    .sync-modal-overlay.open {
+      display: block;
+    }
+
+    .sync-modal {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      border-radius: 16px;
+      padding: 32px;
+      max-width: 400px;
+      width: 90%;
+      z-index: 101;
+      display: none;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    }
+
+    .sync-modal.open {
+      display: block;
+    }
+
+    .sync-modal-close {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      background: #eee;
+    }
+
+    .sync-modal-close:hover {
+      background: #ddd;
+    }
+
+    .sync-modal-title {
+      font-size: 11px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: #acada8;
+      margin-bottom: 16px;
+    }
+
+    .sync-modal-heading {
+      font-size: 20px;
+      font-weight: 600;
+      color: #292929;
+      margin-bottom: 20px;
+    }
+
+    .sync-modal-content {
+      font-size: 14px;
+      color: #4e4d4b;
+      line-height: 1.6;
+    }
+
+    .sync-input {
+      width: 100%;
+      padding: 12px 16px;
+      font-size: 16px;
+      border: 1px solid #e5e5e0;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      outline: none;
+      font-family: inherit;
+    }
+
+    .sync-input:focus {
+      border-color: #788c15;
+    }
+
+    .sync-btn {
+      width: 100%;
+      padding: 12px 16px;
+      font-size: 14px;
+      font-weight: 500;
+      color: white;
+      background: #292929;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background 0.2s;
+    }
+
+    .sync-btn:hover {
+      background: #4e4d4b;
+    }
+
+    .sync-btn:disabled {
+      background: #acada8;
+      cursor: not-allowed;
+    }
+
+    .sync-btn-secondary {
+      background: #eee;
+      color: #4e4d4b;
+      margin-top: 8px;
+    }
+
+    .sync-btn-secondary:hover {
+      background: #ddd;
+    }
+
+    .sync-status {
+      margin-top: 16px;
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 13px;
+    }
+
+    .sync-status.success {
+      background: #f2f6e1;
+      color: #5b6f00;
+    }
+
+    .sync-status.error {
+      background: #fef2f0;
+      color: #bd4a30;
+    }
+
+    .sync-status.info {
+      background: #f5f5f5;
+      color: #72726e;
+    }
+
+    body.dark .sync-modal {
+      background: #222;
+    }
+
+    body.dark .sync-modal-close {
+      background: #333;
+    }
+
+    body.dark .sync-modal-close:hover {
+      background: #444;
+    }
+
+    body.dark .sync-modal-title {
+      color: #818179;
+    }
+
+    body.dark .sync-modal-heading {
+      color: #fcfcf8;
+    }
+
+    body.dark .sync-modal-content {
+      color: #acada8;
+    }
+
+    body.dark .sync-input {
+      background: #313130;
+      border-color: #404040;
+      color: #fcfcf8;
+    }
+
+    body.dark .sync-input:focus {
+      border-color: #b2c248;
+    }
+
+    body.dark .sync-btn {
+      background: #fcfcf8;
+      color: #292929;
+    }
+
+    body.dark .sync-btn:hover {
+      background: #e5e5e0;
+    }
+
+    body.dark .sync-btn:disabled {
+      background: #4e4d4b;
+      color: #818179;
+    }
+
+    body.dark .sync-btn-secondary {
+      background: #333;
+      color: #acada8;
+    }
+
+    body.dark .sync-btn-secondary:hover {
+      background: #444;
+    }
+
+    body.dark .sync-status.success {
+      background: #313225;
+      color: #b2c248;
+    }
+
+    body.dark .sync-status.error {
+      background: #3d2a25;
+      color: #ec7558;
+    }
+
+    body.dark .sync-status.info {
+      background: #313130;
+      color: #9e9e99;
+    }
+
   </style>
 </head>
 <body>
@@ -1116,6 +1381,29 @@
           <rect x="14" y="4" width="4" height="16"></rect>
         </svg>
       </button>
+    </div>
+
+    <!-- Sync Toggle -->
+    <button class="sync-toggle" id="sync-toggle" title="Sync settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 12a9 9 0 0 1-9 9m9-9a9 9 0 0 0-9-9m9 9H3m9 9a9 9 0 0 1-9-9m9 9c1.66 0 3-4.03 3-9s-1.34-9-3-9m0 18c-1.66 0-3-4.03-3-9s1.34-9 3-9m-9 9a9 9 0 0 1 9-9"/>
+      </svg>
+    </button>
+
+    <!-- Sync Modal -->
+    <div class="sync-modal-overlay" id="sync-modal-overlay"></div>
+    <div class="sync-modal" id="sync-modal">
+      <button class="sync-modal-close action-btn" id="sync-modal-close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+      <div class="sync-modal-title">Sync</div>
+      <div class="sync-modal-heading" id="sync-modal-heading">Sync Across Devices</div>
+      <div class="sync-modal-content" id="sync-modal-content">
+        <p style="margin-bottom: 16px;">Enter a passphrase to sync your data across devices. Use the same passphrase on all your devices.</p>
+        <input type="text" class="sync-input" id="sync-passphrase" placeholder="Enter your passphrase..." autocomplete="off">
+        <button class="sync-btn" id="sync-connect-btn">Connect</button>
+        <div class="sync-status" id="sync-status" style="display: none;"></div>
+      </div>
     </div>
 
     <!-- Theme Toggle -->
@@ -2053,6 +2341,307 @@
       $sidebar.classList.add('open');
       document.body.classList.add('sidebar-open');
       renderList();
+    }
+
+    // ===== SYNC FUNCTIONALITY =====
+    // TODO: Replace with your deployed Cloudflare Worker URL
+    const SYNC_API_URL = 'https://one-thing-sync.s-morgan-896.workers.dev';
+    const SYNC_PASSPHRASE_KEY = 'onething-sync-passphrase';
+    const SYNC_LAST_SYNC_KEY = 'onething-sync-last';
+    const SYNC_ENABLED_KEY = 'onething-sync-enabled';
+
+    const $syncToggle = document.getElementById('sync-toggle');
+    const $syncModal = document.getElementById('sync-modal');
+    const $syncModalOverlay = document.getElementById('sync-modal-overlay');
+    const $syncModalClose = document.getElementById('sync-modal-close');
+    const $syncModalHeading = document.getElementById('sync-modal-heading');
+    const $syncModalContent = document.getElementById('sync-modal-content');
+    const $syncPassphrase = document.getElementById('sync-passphrase');
+    const $syncConnectBtn = document.getElementById('sync-connect-btn');
+    const $syncStatus = document.getElementById('sync-status');
+
+    let syncEnabled = localStorage.getItem(SYNC_ENABLED_KEY) === 'true';
+    let syncPassphrase = localStorage.getItem(SYNC_PASSPHRASE_KEY) || '';
+    let syncDebounceTimer = null;
+    let isSyncing = false;
+
+    // Keys to sync (all onething-* keys except sync config)
+    const getSyncableKeys = () => {
+      const keys = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('onething-') &&
+            !key.startsWith('onething-sync-') &&
+            key !== 'onething-timer-running' &&
+            key !== 'onething-timer-seconds') {
+          keys.push(key);
+        }
+      }
+      return keys;
+    };
+
+    // Update sync button state
+    const updateSyncToggle = (state) => {
+      $syncToggle.classList.remove('syncing', 'synced', 'error');
+      if (state) {
+        $syncToggle.classList.add(state);
+      }
+      if (state === 'syncing') {
+        $syncToggle.title = 'Syncing...';
+      } else if (state === 'synced') {
+        $syncToggle.title = 'Synced - Click to manage';
+      } else if (state === 'error') {
+        $syncToggle.title = 'Sync error - Click to retry';
+      } else {
+        $syncToggle.title = syncEnabled ? 'Sync enabled' : 'Sync settings';
+      }
+    };
+
+    // Show status message in modal
+    const showSyncStatus = (message, type = 'info') => {
+      $syncStatus.textContent = message;
+      $syncStatus.className = 'sync-status ' + type;
+      $syncStatus.style.display = 'block';
+    };
+
+    const hideSyncStatus = () => {
+      $syncStatus.style.display = 'none';
+    };
+
+    // Open sync modal
+    const openSyncModal = () => {
+      hideSyncStatus();
+      if (syncEnabled && syncPassphrase) {
+        // Show connected state
+        $syncModalHeading.textContent = 'Sync Connected';
+        $syncModalContent.innerHTML = `
+          <p style="margin-bottom: 16px;">Your data is syncing across devices.</p>
+          <div class="sync-status info" style="display: block; margin-bottom: 16px;">
+            Last sync: ${getLastSyncDisplay()}
+          </div>
+          <button class="sync-btn" id="sync-now-btn">Sync Now</button>
+          <button class="sync-btn sync-btn-secondary" id="sync-disconnect-btn">Disconnect</button>
+        `;
+        document.getElementById('sync-now-btn').addEventListener('click', async () => {
+          showSyncStatus('Syncing...', 'info');
+          await performSync(true);
+          showSyncStatus('Sync complete!', 'success');
+        });
+        document.getElementById('sync-disconnect-btn').addEventListener('click', () => {
+          syncEnabled = false;
+          syncPassphrase = '';
+          localStorage.removeItem(SYNC_ENABLED_KEY);
+          localStorage.removeItem(SYNC_PASSPHRASE_KEY);
+          localStorage.removeItem(SYNC_LAST_SYNC_KEY);
+          updateSyncToggle();
+          closeSyncModal();
+        });
+      } else {
+        // Show connect form
+        $syncModalHeading.textContent = 'Sync Across Devices';
+        $syncModalContent.innerHTML = `
+          <p style="margin-bottom: 16px;">Enter a passphrase to sync your data across devices. Use the same passphrase on all your devices.</p>
+          <input type="text" class="sync-input" id="sync-passphrase" placeholder="Enter your passphrase..." autocomplete="off">
+          <button class="sync-btn" id="sync-connect-btn">Connect</button>
+          <div class="sync-status" id="sync-status" style="display: none;"></div>
+        `;
+        const $newPassphrase = document.getElementById('sync-passphrase');
+        const $newConnectBtn = document.getElementById('sync-connect-btn');
+        const $newStatus = document.getElementById('sync-status');
+
+        $newConnectBtn.addEventListener('click', async () => {
+          const passphrase = $newPassphrase.value.trim();
+          if (!passphrase) {
+            $newStatus.textContent = 'Please enter a passphrase';
+            $newStatus.className = 'sync-status error';
+            $newStatus.style.display = 'block';
+            return;
+          }
+          if (passphrase.length < 4) {
+            $newStatus.textContent = 'Passphrase must be at least 4 characters';
+            $newStatus.className = 'sync-status error';
+            $newStatus.style.display = 'block';
+            return;
+          }
+
+          $newConnectBtn.disabled = true;
+          $newStatus.textContent = 'Connecting...';
+          $newStatus.className = 'sync-status info';
+          $newStatus.style.display = 'block';
+
+          try {
+            // Check if sync URL is configured
+            if (SYNC_API_URL.includes('REPLACE_ME')) {
+              throw new Error('Sync backend not configured. See CLAUDE.md for setup instructions.');
+            }
+
+            syncPassphrase = passphrase;
+            localStorage.setItem(SYNC_PASSPHRASE_KEY, passphrase);
+
+            // Do initial full sync
+            await performFullSync();
+
+            syncEnabled = true;
+            localStorage.setItem(SYNC_ENABLED_KEY, 'true');
+            updateSyncToggle('synced');
+
+            $newStatus.textContent = 'Connected! Your data is now syncing.';
+            $newStatus.className = 'sync-status success';
+
+            setTimeout(() => closeSyncModal(), 1500);
+          } catch (error) {
+            $newStatus.textContent = 'Failed to connect: ' + error.message;
+            $newStatus.className = 'sync-status error';
+            $newConnectBtn.disabled = false;
+          }
+        });
+      }
+      $syncModal.classList.add('open');
+      $syncModalOverlay.classList.add('open');
+    };
+
+    const closeSyncModal = () => {
+      $syncModal.classList.remove('open');
+      $syncModalOverlay.classList.remove('open');
+    };
+
+    const getLastSyncDisplay = () => {
+      const lastSync = parseInt(localStorage.getItem(SYNC_LAST_SYNC_KEY) || '0', 10);
+      if (!lastSync) return 'Never';
+      const diff = Date.now() - lastSync;
+      if (diff < 60000) return 'Just now';
+      if (diff < 3600000) return Math.floor(diff / 60000) + ' minutes ago';
+      if (diff < 86400000) return Math.floor(diff / 3600000) + ' hours ago';
+      return new Date(lastSync).toLocaleDateString();
+    };
+
+    // Push local changes to server
+    const pushChanges = async () => {
+      if (!syncEnabled || !syncPassphrase) return;
+
+      const keys = getSyncableKeys();
+      const data = keys.map(key => ({
+        key,
+        value: localStorage.getItem(key) || '',
+        updatedAt: Date.now()
+      }));
+
+      const response = await fetch(`${SYNC_API_URL}/sync/push`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ passphrase: syncPassphrase, data })
+      });
+
+      if (!response.ok) throw new Error('Push failed');
+      return response.json();
+    };
+
+    // Pull changes from server
+    const pullChanges = async (since = 0) => {
+      if (!syncEnabled || !syncPassphrase) return;
+
+      const response = await fetch(`${SYNC_API_URL}/sync/pull`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ passphrase: syncPassphrase, since })
+      });
+
+      if (!response.ok) throw new Error('Pull failed');
+      return response.json();
+    };
+
+    // Full sync (initial connect)
+    const performFullSync = async () => {
+      // First push all local data
+      await pushChanges();
+
+      // Then pull all remote data
+      const response = await fetch(`${SYNC_API_URL}/sync/full`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ passphrase: syncPassphrase })
+      });
+
+      if (!response.ok) throw new Error('Full sync failed');
+
+      const result = await response.json();
+
+      // Apply remote changes (last-write-wins)
+      for (const item of result.data) {
+        localStorage.setItem(item.key, item.value);
+      }
+
+      localStorage.setItem(SYNC_LAST_SYNC_KEY, String(result.serverTime));
+
+      // Re-render UI with synced data
+      renderPlan();
+      if (sidebarOpen) renderList();
+    };
+
+    // Regular sync (push local, pull remote)
+    const performSync = async (force = false) => {
+      if (isSyncing || (!syncEnabled && !force)) return;
+
+      isSyncing = true;
+      updateSyncToggle('syncing');
+
+      try {
+        // Push local changes
+        await pushChanges();
+
+        // Pull remote changes
+        const lastSync = parseInt(localStorage.getItem(SYNC_LAST_SYNC_KEY) || '0', 10);
+        const result = await pullChanges(lastSync);
+
+        if (result && result.data && result.data.length > 0) {
+          // Apply remote changes
+          for (const item of result.data) {
+            localStorage.setItem(item.key, item.value);
+          }
+          // Re-render UI
+          renderPlan();
+          if (sidebarOpen) renderList();
+        }
+
+        if (result && result.serverTime) {
+          localStorage.setItem(SYNC_LAST_SYNC_KEY, String(result.serverTime));
+        }
+
+        updateSyncToggle('synced');
+      } catch (error) {
+        console.error('Sync error:', error);
+        updateSyncToggle('error');
+      } finally {
+        isSyncing = false;
+      }
+    };
+
+    // Debounced sync on data change
+    const queueSync = () => {
+      if (!syncEnabled) return;
+      if (syncDebounceTimer) clearTimeout(syncDebounceTimer);
+      syncDebounceTimer = setTimeout(() => performSync(), 2000);
+    };
+
+    // Override localStorage.setItem to trigger sync
+    const originalSetItem = localStorage.setItem.bind(localStorage);
+    localStorage.setItem = (key, value) => {
+      originalSetItem(key, value);
+      if (key.startsWith('onething-') && !key.startsWith('onething-sync-') &&
+          key !== 'onething-timer-running' && key !== 'onething-timer-seconds') {
+        queueSync();
+      }
+    };
+
+    // Event listeners
+    $syncToggle.addEventListener('click', openSyncModal);
+    $syncModalOverlay.addEventListener('click', closeSyncModal);
+    $syncModalClose.addEventListener('click', closeSyncModal);
+
+    // Initial sync on load if enabled
+    if (syncEnabled && syncPassphrase) {
+      updateSyncToggle('synced');
+      setTimeout(() => performSync(), 1000);
     }
   </script>
 </body>

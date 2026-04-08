@@ -41,8 +41,45 @@ npm run build:linux  # Build Linux .AppImage
 npm run build        # Build all platforms
 ```
 
+## Sync Backend
+
+Cross-device sync is powered by Cloudflare Workers + D1 database.
+
+### Setup (First Time)
+
+```bash
+cd backend
+npm install
+npm run db:create        # Creates D1 database, outputs database_id
+# Update wrangler.toml with your database_id
+npm run db:migrate       # Creates tables
+npm run deploy           # Deploys worker
+# Update SYNC_API_URL in index.html and extension/newtab.html
+```
+
+### Backend Commands
+
+```bash
+cd backend
+npm run dev              # Local development
+npm run deploy           # Deploy to Cloudflare
+npm run db:migrate       # Run schema migrations
+npm run db:migrate:local # Run migrations locally
+```
+
+### Architecture
+
+- **Auth**: Passphrase-based (SHA-256 hash becomes user ID)
+- **Storage**: Cloudflare D1 (SQLite)
+- **Sync**: Last-write-wins based on timestamp
+- **API Endpoints**:
+  - `POST /sync/push` - Push changes to server
+  - `POST /sync/pull` - Pull changes since timestamp
+  - `POST /sync/full` - Initial full sync
+
 ## Notes
 
 - The desktop app auto-hides the "install as new tab" hint via `window.electronAPI.isElectron`
 - macOS builds are unsigned; users need to right-click → Open on first launch
 - Build artifacts go to `electron/dist/` (gitignored)
+- Sync passphrase is stored in localStorage; if forgotten, data is inaccessible

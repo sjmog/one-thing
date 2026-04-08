@@ -1,0 +1,8 @@
+name = "one-thing-sync"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "one-thing-sync"
+database_id = "04cfc94a-b738-4087-90fb-2951a770f5f9"
