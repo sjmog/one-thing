@@ -14,7 +14,8 @@
       "Bash(zip:*)",
       "Bash(npx:*)",
       "Bash(node test-backspace.mjs:*)",
-      "Bash(convert:*)"
+      "Bash(convert:*)",
+      "WebFetch(domain:github.com)"
     ]
   }
 }

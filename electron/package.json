@@ -26,7 +26,8 @@
       "../index.html",
       "../favicon.ico",
       "../favicon-16.png",
-      "../favicon-32.png"
+      "../favicon-32.png",
+      "../FunnelSans.woff2"
     ],
     "mac": {
       "icon": "icon.png",

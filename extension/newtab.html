@@ -8,6 +8,14 @@
   <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png" id="favicon-32">
   <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png" id="favicon-16">
   <style>
+    @font-face {
+      font-family: 'Funnel Sans';
+      src: url('FunnelSans.woff2') format('woff2');
+      font-weight: 300 800;
+      font-style: normal;
+      font-display: swap;
+    }
+
     :root {
       /* Surface colors */
       --surface: #f7f7f2;
@@ -67,7 +75,7 @@
     }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-family: 'Funnel Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       background: var(--surface-sunken);
       color: var(--ink-primary);
       height: 100vh;
