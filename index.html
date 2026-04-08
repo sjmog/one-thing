@@ -896,6 +896,11 @@
       opacity: 1;
     }
 
+    .goal-section.empty .item-actions,
+    .nice-item-wrapper.empty .item-actions {
+      display: none;
+    }
+
     .action-btn {
       background: #eee;
       border: none;
@@ -1361,6 +1366,7 @@
       $goalInput.value = plan.goal || '';
       $currentDate.textContent = displayDate(currentDate);
       $goalSection.classList.toggle('completed', plan.goalCompleted || false);
+      $goalSection.classList.toggle('empty', !plan.goal);
 
       // Nice to do
       renderNiceItems(plan.niceToDo);
@@ -1388,11 +1394,11 @@
       // Ensure there's always at least one empty item to click into
       const displayItems = items.length === 0 ? [{ text: '', done: false }] : items;
       $niceItems.innerHTML = displayItems.map((item, i) => `
-        <div class="nice-item-wrapper ${getNiceItemDone(item) ? 'done' : ''}" data-index="${i}">
+        <div class="nice-item-wrapper ${getNiceItemDone(item) ? 'done' : ''} ${!getNiceItemText(item) ? 'empty' : ''}" data-index="${i}">
           <div class="nice-item" contenteditable="true">${escapeHtml(getNiceItemText(item))}</div>
-          ${getNiceItemText(item) ? `<div class="item-actions">
+          <div class="item-actions">
             <button class="action-btn check-btn">${checkIcon}</button>
-          </div>` : ''}
+          </div>
         </div>
       `).join('');
 
@@ -1410,17 +1416,16 @@
           }
           setNiceItemText(plan.niceToDo, i, el.textContent);
           savePlan(currentDate, plan);
+          wrapper.classList.toggle('empty', !el.textContent);
         });
 
-        if (checkBtn) {
-          checkBtn.addEventListener('click', () => {
-            const plan = loadPlan(currentDate);
-            const currentDone = getNiceItemDone(plan.niceToDo[i]);
-            setNiceItemDone(plan.niceToDo, i, !currentDone);
-            savePlan(currentDate, plan);
-            renderPlan();
-          });
-        }
+        checkBtn.addEventListener('click', () => {
+          const plan = loadPlan(currentDate);
+          const currentDone = getNiceItemDone(plan.niceToDo[i]);
+          setNiceItemDone(plan.niceToDo, i, !currentDone);
+          savePlan(currentDate, plan);
+          renderPlan();
+        });
 
         el.addEventListener('keydown', (e) => {
           if (e.key === 'Enter') {
@@ -1550,6 +1555,7 @@
       const plan = loadPlan(currentDate);
       plan.goal = $goalInput.value;
       savePlan(currentDate, plan);
+      $goalSection.classList.toggle('empty', !$goalInput.value);
     });
 
     // Confetti function using canvas
