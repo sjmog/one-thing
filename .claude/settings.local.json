@@ -4,7 +4,17 @@
       "Bash(open:*)",
       "Bash(magick:*)",
       "Bash(git add:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(npm install)",
+      "Bash(git commit:*)",
+      "Bash(sips:*)",
+      "Bash(npm run build:mac:*)",
+      "Bash(gh release create:*)",
+      "Bash(git push:*)",
+      "Bash(zip:*)",
+      "Bash(npx:*)",
+      "Bash(node test-backspace.mjs:*)",
+      "Bash(convert:*)"
     ]
   }
 }
