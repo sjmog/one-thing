@@ -325,7 +325,8 @@
       display: flex;
       align-items: center;
       gap: 8px;
-      padding: 8px 0;
+      padding: 8px 40px 8px 0;
+      margin-right: -40px;
     }
 
     .list-item-text {
@@ -814,6 +815,8 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
+      padding-right: 60px;
+      margin-right: -60px;
     }
 
     .goal-input {
@@ -842,7 +845,7 @@
       position: absolute;
       left: calc(100% + 16px);
       top: 50%;
-      transform: translateY(-50%);
+      transform: translateY(-40%);
       display: flex;
       gap: 4px;
     }
@@ -907,11 +910,15 @@
       display: flex;
       align-items: center;
       justify-content: center;
+      padding-right: 50px;
+      margin-right: -50px;
     }
 
     .nice-item-wrapper .item-actions {
       position: absolute;
       left: calc(100% + 8px);
+      top: 50%;
+      transform: translateY(-50%);
       display: flex;
       gap: 4px;
     }
@@ -945,7 +952,8 @@
 
     .nice-item-wrapper:hover .item-actions,
     .list-item:hover .item-actions,
-    .goal-wrapper:hover .item-actions {
+    .goal-wrapper:hover .item-actions,
+    .item-actions:hover {
       opacity: 1;
     }
 
