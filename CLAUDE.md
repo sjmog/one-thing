@@ -26,8 +26,9 @@ After completing a feature:
    - Upload to Chrome Web Store Developer Dashboard
 3. **Release Desktop App**:
    - Update version in `electron/package.json`
-   - Build: `cd electron && npm run build:mac` (or `build:win`, `build:linux`, `build` for all)
-   - Create GitHub release with built artifacts from `electron/dist/`
+   - Build: `cd electron && npm run build:mac`
+   - Create GitHub release: `gh release create vX.X.X --title "vX.X.X" --notes "..."`
+   - Upload dmg: `gh release upload vX.X.X "electron/dist/One Thing-X.X.X-arm64.dmg"`
 
 ## Build Commands (Electron)
 
