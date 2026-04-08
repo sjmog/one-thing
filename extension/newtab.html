@@ -810,10 +810,10 @@
     }
 
     .goal-wrapper {
-      display: flex;
+      position: relative;
+      display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 8px;
     }
 
     .goal-input {
@@ -834,7 +834,10 @@
     }
 
     .goal-actions {
-      flex-shrink: 0;
+      position: absolute;
+      left: calc(100% + 8px);
+      display: flex;
+      gap: 4px;
     }
 
     /* Confetti Canvas */
