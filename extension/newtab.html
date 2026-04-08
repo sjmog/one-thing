@@ -1065,6 +1065,26 @@
       .goal-actions {
         display: none !important;
       }
+
+      .sidebar {
+        width: 100%;
+      }
+
+      body.sidebar-open .sidebar-toggle {
+        left: 20px;
+      }
+
+      body.sidebar-open .main-content {
+        margin-left: 0;
+      }
+
+      body.sidebar-open .header {
+        left: 0;
+      }
+
+      body.sidebar-open .center-content {
+        display: none;
+      }
     }
 
     /* Sync UI */
@@ -2443,10 +2463,12 @@
     };
 
     // Open sync modal
+    const $syncModalTitle = document.querySelector('.sync-modal-title');
     const openSyncModal = () => {
       hideSyncStatus();
       if (syncEnabled && syncPassphrase) {
         // Show connected state
+        $syncModalTitle.textContent = 'SYNC CONNECTED';
         $syncModalHeading.textContent = 'Sync Connected';
         $syncModalContent.innerHTML = `
           <p style="margin-bottom: 16px;">Your data is syncing across devices.</p>
@@ -2472,6 +2494,7 @@
         });
       } else {
         // Show connect form
+        $syncModalTitle.textContent = 'SYNC ACROSS DEVICES';
         $syncModalHeading.textContent = 'Sync Across Devices';
         $syncModalContent.innerHTML = `
           <p style="margin-bottom: 16px;">Enter a passphrase to sync your data across devices. Use the same passphrase on all your devices.</p>
