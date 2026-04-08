@@ -1319,6 +1319,26 @@
                 $listItems.querySelector('.list-placeholder-text').focus();
               }
             }, 0);
+          } else if (e.key === 'Tab' && e.shiftKey) {
+            e.preventDefault();
+            const allSpans = $listItems.querySelectorAll('.list-item-text');
+            if (i > 0) focusAtEnd(allSpans[i - 1]);
+          } else if (e.key === 'Tab' && !e.shiftKey) {
+            e.preventDefault();
+            const allSpans = $listItems.querySelectorAll('.list-item-text');
+            if (i < allSpans.length - 1) {
+              focusAtEnd(allSpans[i + 1]);
+            } else {
+              // Last item - create a new one
+              const items = loadList();
+              items.push({ id: generateId(), text: '', done: false });
+              saveList(items);
+              renderList();
+              setTimeout(() => {
+                const newSpans = $listItems.querySelectorAll('.list-item-text');
+                if (newSpans.length > 0) newSpans[newSpans.length - 1].focus();
+              }, 0);
+            }
           }
         });
       });
@@ -1350,6 +1370,10 @@
               $listItems.querySelector('.list-placeholder-text').focus();
             }, 0);
           }
+        } else if (e.key === 'Backspace' && $placeholderText.textContent === '') {
+          e.preventDefault();
+          const allItems = $listItems.querySelectorAll('.list-item-text');
+          if (allItems.length > 0) focusAtEnd(allItems[allItems.length - 1]);
         }
       });
     };
