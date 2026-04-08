@@ -4,10 +4,62 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>One Thing</title>
-  <link rel="icon" type="image/x-icon" href="favicon.ico">
-  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
-  <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png">
+  <link rel="icon" type="image/x-icon" href="favicon.ico" id="favicon-ico">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png" id="favicon-32">
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png" id="favicon-16">
   <style>
+    :root {
+      /* Surface colors */
+      --surface: #f7f7f2;
+      --surface-raised: #ffffff;
+      --surface-elevated: #ffffff;
+      --surface-sunken: #f2f2ec;
+      --surface-tooltip: #363635;
+      --surface-overlay: #818179;
+      --surface-accent-blue: #eaf4fe;
+      --surface-accent-green: #f2f6e1;
+      --surface-accent-purple: #f3f0fa;
+      --surface-tint-accent: #e5eacd;
+      --surface-tint-neutral: #625a220f;
+      /* Ink colors */
+      --ink-primary: #292929;
+      --ink-secondary-strong: #4e4d4b;
+      --ink-secondary: #72726e;
+      --ink-tertiary: #acada8;
+      --ink-accent: #788c15;
+      --ink-accent-strong: #5b6f00;
+      --ink-danger: #bd4a30;
+      --ink-primary-inverse: #fcfcf8;
+      --ink-secondary-inverse: #9e9e99;
+      --border-color: #e5e5e0;
+    }
+
+    body.dark {
+      /* Surface colors */
+      --surface: #292929;
+      --surface-raised: #313130;
+      --surface-elevated: #363635;
+      --surface-sunken: #212121;
+      --surface-tooltip: #363635;
+      --surface-overlay: #4e4d4b;
+      --surface-accent-blue: #2e303b;
+      --surface-accent-green: #313225;
+      --surface-accent-purple: #34313e;
+      --surface-tint-accent: #434625;
+      --surface-tint-neutral: #ffffff0a;
+      /* Ink colors */
+      --ink-primary: #fcfcf8;
+      --ink-secondary-strong: #acada8;
+      --ink-secondary: #9e9e99;
+      --ink-tertiary: #818179;
+      --ink-accent: #788c15;
+      --ink-accent-strong: #b2c248;
+      --ink-danger: #ec7558;
+      --ink-primary-inverse: #292929;
+      --ink-secondary-inverse: #72726e;
+      --border-color: #404040;
+    }
+
     * {
       box-sizing: border-box;
       margin: 0;
@@ -16,11 +68,18 @@
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: #fafafa;
-      color: #333;
+      background: var(--surface-sunken);
+      color: var(--ink-primary);
       height: 100vh;
       overflow: hidden;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      text-rendering: optimizeLegibility;
       transition: background 0.3s ease, color 0.3s ease;
+    }
+
+    * {
+      transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
     }
 
     /* Header */
@@ -35,7 +94,7 @@
       gap: 16px;
       padding: 16px;
       z-index: 10;
-      transition: left 0.3s ease;
+      transition: left 0.2s ease;
     }
 
     body.sidebar-open .header {
@@ -45,31 +104,30 @@
     .header button {
       background: none;
       border: none;
-      color: #ccc;
+      color: #acada8;
       cursor: pointer;
       font-size: 14px;
       padding: 4px 8px;
-      transition: color 0.15s;
+      transition: color 0s;
     }
 
     .header button:hover {
-      color: #888;
+      color: #72726e;
     }
 
     .header .current-date {
       font-size: 14px;
-      color: #ccc;
+      color: #acada8;
       min-width: 140px;
       text-align: center;
       cursor: pointer;
       padding: 4px 8px;
       border-radius: 4px;
-      transition: color 0.15s, background 0.15s;
+      transition: color 0s, background 0s;
     }
 
     .header .current-date:hover {
-      color: #888;
-      background: #f5f5f5;
+      color: #72726e;
     }
 
     /* Date Picker */
@@ -100,7 +158,7 @@
     .date-picker-header button {
       background: none;
       border: none;
-      color: #888;
+      color: #72726e;
       cursor: pointer;
       font-size: 14px;
       padding: 4px 8px;
@@ -108,14 +166,14 @@
     }
 
     .date-picker-header button:hover {
-      color: #333;
+      color: #292929;
       background: #eee;
     }
 
     .date-picker-month {
       font-size: 14px;
       font-weight: 500;
-      color: #333;
+      color: #292929;
     }
 
     .date-picker-grid {
@@ -126,7 +184,7 @@
 
     .date-picker-day-label {
       font-size: 11px;
-      color: #999;
+      color: #acada8;
       text-align: center;
       padding: 4px 0;
     }
@@ -138,12 +196,12 @@
       align-items: center;
       justify-content: center;
       font-size: 13px;
-      color: #333;
+      color: #292929;
       border: none;
       background: none;
       border-radius: 50%;
       cursor: pointer;
-      transition: background 0.15s;
+      transition: background 0s;
     }
 
     .date-picker-day:hover {
@@ -151,7 +209,7 @@
     }
 
     .date-picker-day.other-month {
-      color: #ccc;
+      color: #acada8;
     }
 
     .date-picker-day.today {
@@ -189,17 +247,16 @@
       z-index: 20;
       background: none;
       border: none;
-      color: #ccc;
+      color: #acada8;
       cursor: pointer;
       font-size: 20px;
       padding: 8px;
       border-radius: 8px;
-      transition: left 0.3s ease, color 0.15s, background 0.15s;
+      transition: left 0.2s ease, color 0s, background 0s;
     }
 
     .sidebar-toggle:hover {
-      color: #888;
-      background: #f5f5f5;
+      color: #72726e;
     }
 
     /* Sidebar */
@@ -209,10 +266,10 @@
       left: 0;
       bottom: 0;
       width: 280px;
-      background: white;
-      border-right: 1px solid #eee;
+      background: var(--surface);
+      border-right: 1px solid var(--border-color);
       transform: translateX(-100%);
-      transition: transform 0.3s ease, background 0.3s ease, border-color 0.3s ease;
+      transition: transform 0.2s ease, background-color 0.3s ease, border-color 0.3s ease;
       z-index: 15;
       display: flex;
       flex-direction: column;
@@ -223,19 +280,19 @@
     }
 
     .sidebar-header {
-      padding: 20px;
+      padding: 16px 20px;
     }
 
     .sidebar-title {
       font-size: 11px;
       letter-spacing: 3px;
-      color: #ccc;
+      color: #acada8;
       text-transform: uppercase;
     }
 
     /* Main content push */
     .main-content {
-      transition: margin-left 0.3s ease;
+      transition: margin-left 0.2s ease;
     }
 
     body.sidebar-open .main-content {
@@ -249,7 +306,7 @@
     .sidebar-content {
       flex: 1;
       overflow-y: auto;
-      padding: 16px 20px;
+      padding: 0 20px 16px;
     }
 
     .list-items {
@@ -268,7 +325,7 @@
       font-size: 15px;
       outline: none;
       line-height: 1.4;
-      transition: color 0.3s ease, opacity 0.3s ease;
+      color: var(--ink-primary);
     }
 
     .list-item.done .list-item-text {
@@ -292,18 +349,11 @@
       flex: 1;
       font-size: 15px;
       outline: none;
-      color: #999;
+      color: #acada8;
       line-height: 1.4;
     }
 
-    .list-placeholder-text:empty::before {
-      content: '+';
-      color: #ccc;
-    }
 
-    .list-placeholder-text:focus::before {
-      content: '';
-    }
 
     /* Plan Mode */
     .plan-mode {
@@ -322,13 +372,13 @@
       border: none;
       cursor: pointer;
       padding: 8px;
-      color: #ccc;
-      transition: color 0.15s;
+      color: #acada8;
+      transition: color 0s;
       z-index: 10;
     }
 
     .theme-toggle:hover {
-      color: #888;
+      color: #72726e;
     }
 
     .theme-toggle svg {
@@ -350,17 +400,8 @@
 
     /* Dark Mode */
     body.dark {
-      background: #1a1a1a;
-      color: #e0e0e0;
-    }
-
-    body.dark .sidebar {
-      background: #222;
-      border-right-color: #333;
-    }
-
-    body.dark .header .current-date:hover {
-      background: #333;
+      background: #292929;
+      color: #fcfcf8;
     }
 
     body.dark .date-picker {
@@ -369,20 +410,20 @@
     }
 
     body.dark .date-picker-month {
-      color: #e0e0e0;
+      color: #fcfcf8;
     }
 
     body.dark .date-picker-header button {
-      color: #555;
+      color: #818179;
     }
 
     body.dark .date-picker-header button:hover {
-      color: #888;
+      color: #72726e;
       background: #333;
     }
 
     body.dark .date-picker-day {
-      color: #e0e0e0;
+      color: #fcfcf8;
     }
 
     body.dark .date-picker-day:hover {
@@ -390,12 +431,12 @@
     }
 
     body.dark .date-picker-day.other-month {
-      color: #555;
+      color: #818179;
     }
 
     body.dark .date-picker-day.selected {
       background: #e0e0e0;
-      color: #1a1a1a;
+      color: #292929;
     }
 
     body.dark .date-picker-day.selected:hover {
@@ -403,19 +444,11 @@
     }
 
     body.dark .goal-input {
-      color: #e0e0e0;
+      color: #fcfcf8;
     }
 
     body.dark .nice-item {
-      color: #bbb;
-    }
-
-    body.dark .list-item-text {
-      color: #e0e0e0;
-    }
-
-    body.dark .list-item.done .list-item-text {
-      opacity: 0.4;
+      color: #acada8;
     }
 
     body.dark .sidebar-toggle,
@@ -425,7 +458,7 @@
     body.dark .goal-label,
     body.dark .nice-label,
     body.dark .sidebar-title {
-      color: #555;
+      color: #818179;
     }
 
     body.dark .sidebar-toggle:hover,
@@ -434,13 +467,9 @@
     body.dark .header .current-date:hover,
     body.dark .goal-label:hover,
     body.dark .nice-label:hover {
-      color: #888;
+      color: #72726e;
     }
 
-    body.dark .sidebar-toggle:hover,
-    body.dark .header .current-date:hover {
-      background: #333;
-    }
 
     /* Timer */
     .timer {
@@ -457,12 +486,12 @@
       font-size: 28px;
       font-weight: 500;
       font-variant-numeric: tabular-nums;
-      color: #ccc;
-      transition: color 0.3s ease;
+      color: #acada8;
+      transition: color 0s ease;
     }
 
     .timer.running .timer-display {
-      color: #666;
+      color: #4e4d4b;
     }
 
     .timer-btn {
@@ -470,16 +499,16 @@
       border: none;
       cursor: pointer;
       padding: 8px;
-      color: #ccc;
+      color: #acada8;
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: color 0.15s, background 0.15s;
+      transition: color 0s, background 0s;
     }
 
     .timer-btn:hover {
-      color: #888;
+      color: #72726e;
       background: #f5f5f5;
     }
 
@@ -501,11 +530,11 @@
     }
 
     .timer-display:focus {
-      color: #888;
+      color: #72726e;
     }
 
     body.dark .timer-display:focus {
-      color: #888;
+      color: #72726e;
     }
 
     .timer-focus-wrapper {
@@ -521,23 +550,23 @@
       font-size: 11px;
       letter-spacing: 3px;
       text-transform: uppercase;
-      color: #888;
+      color: #72726e;
       outline: none;
       min-width: 120px;
       min-height: 16px;
       text-align: center;
-      transition: color 0.3s ease;
+      transition: color 0s ease;
     }
 
     .timer-focus:empty::before {
       content: 'FOCUS';
-      color: #ccc;
-      cursor: pointer;
-      transition: color 0.15s;
+      color: #acada8;
+      cursor: text;
+      transition: color 0s;
     }
 
     .timer-focus:empty:hover::before {
-      color: #888;
+      color: #72726e;
     }
 
     .timer-focus:empty:focus::before {
@@ -545,15 +574,15 @@
     }
 
     body.dark .timer-focus {
-      color: #999;
+      color: #acada8;
     }
 
     body.dark .timer-focus:empty::before {
-      color: #555;
+      color: #818179;
     }
 
     body.dark .timer-focus:empty:hover::before {
-      color: #888;
+      color: #72726e;
     }
 
     /* Install hint */
@@ -568,9 +597,9 @@
       background: #f5f5f5;
       border-radius: 20px;
       font-size: 13px;
-      color: #888;
+      color: #72726e;
       z-index: 10;
-      transition: background 0.15s, color 0.15s;
+      transition: background 0s, color 0s;
     }
 
     .install-hint.hidden {
@@ -582,7 +611,7 @@
     }
 
     .install-hint-text:hover {
-      color: #666;
+      color: #4e4d4b;
     }
 
     .install-hint-dismiss {
@@ -602,11 +631,11 @@
 
     body.dark .install-hint {
       background: #2a2a2a;
-      color: #777;
+      color: #9e9e99;
     }
 
     body.dark .install-hint-text:hover {
-      color: #999;
+      color: #acada8;
     }
 
     body.dark .install-hint-dismiss {
@@ -667,20 +696,20 @@
       font-size: 11px;
       letter-spacing: 3px;
       text-transform: uppercase;
-      color: #ccc;
+      color: #acada8;
       margin-bottom: 16px;
     }
 
     .install-modal-browser {
       font-size: 20px;
       font-weight: 600;
-      color: #333;
+      color: #292929;
       margin-bottom: 20px;
     }
 
     .install-modal-steps {
       font-size: 14px;
-      color: #666;
+      color: #4e4d4b;
       line-height: 1.8;
     }
 
@@ -709,15 +738,15 @@
     }
 
     body.dark .install-modal-title {
-      color: #555;
+      color: #818179;
     }
 
     body.dark .install-modal-browser {
-      color: #e0e0e0;
+      color: #fcfcf8;
     }
 
     body.dark .install-modal-steps {
-      color: #999;
+      color: #acada8;
     }
 
     body.dark .install-modal-steps code {
@@ -725,19 +754,19 @@
     }
 
     body.dark .timer-display {
-      color: #555;
+      color: #818179;
     }
 
     body.dark .timer.running .timer-display {
-      color: #888;
+      color: #72726e;
     }
 
     body.dark .timer-btn {
-      color: #555;
+      color: #818179;
     }
 
     body.dark .timer-btn:hover {
-      color: #888;
+      color: #72726e;
       background: #333;
     }
 
@@ -751,7 +780,7 @@
       flex-direction: column;
       align-items: center;
       padding: 20px;
-      transition: left 0.3s ease;
+      transition: left 0.2s ease;
     }
 
     body.sidebar-open .center-content {
@@ -767,14 +796,14 @@
     .goal-label {
       font-size: 11px;
       letter-spacing: 3px;
-      color: #ccc;
+      color: #acada8;
       margin-bottom: 12px;
       cursor: pointer;
-      transition: color 0.15s;
+      transition: color 0s;
     }
 
     .goal-label:hover {
-      color: #888;
+      color: #72726e;
     }
 
     .goal-wrapper {
@@ -793,9 +822,9 @@
       text-align: center;
       width: 100%;
       max-width: 600px;
-      color: #333;
+      color: #292929;
       outline: none;
-      transition: color 0.3s ease, opacity 0.3s ease;
+      transition: color 0s ease, opacity 0s ease;
     }
 
     .goal-section.completed .goal-input {
@@ -822,7 +851,7 @@
     }
 
     body.dark .goal-input {
-      color: #e0e0e0;
+      color: #fcfcf8;
     }
 
     /* Goal check/undo toggle */
@@ -848,14 +877,14 @@
     .nice-label {
       font-size: 11px;
       letter-spacing: 3px;
-      color: #ccc;
+      color: #acada8;
       margin-bottom: 16px;
       cursor: pointer;
-      transition: color 0.15s;
+      transition: color 0s;
     }
 
     .nice-label:hover {
-      color: #888;
+      color: #72726e;
     }
 
     .nice-items {
@@ -881,12 +910,12 @@
 
     .nice-item {
       font-size: 16px;
-      color: #555;
+      color: #4e4d4b;
       outline: none;
       min-height: 24px;
       min-width: 100px;
       text-align: center;
-      transition: color 0.3s ease, opacity 0.3s ease;
+      transition: color 0s ease, opacity 0s ease;
     }
 
     .nice-item:empty::before {
@@ -903,13 +932,18 @@
       opacity: 0;
       display: flex;
       gap: 4px;
-      transition: opacity 0.15s;
+      transition: opacity 0s;
     }
 
     .nice-item-wrapper:hover .item-actions,
     .list-item:hover .item-actions,
     .goal-wrapper:hover .item-actions {
       opacity: 1;
+    }
+
+    .goal-section.empty .item-actions,
+    .nice-item-wrapper.empty .item-actions {
+      display: none;
     }
 
     .action-btn {
@@ -923,15 +957,15 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: background 0.15s;
+      transition: background 0s;
       flex-shrink: 0;
     }
 
     .action-btn svg {
       width: 12px;
       height: 12px;
-      stroke: #bbb;
-      transition: stroke 0.15s;
+      stroke: #acada8;
+      transition: stroke 0s;
     }
 
     .action-btn:hover {
@@ -939,7 +973,7 @@
     }
 
     .action-btn:hover svg {
-      stroke: #888;
+      stroke: #72726e;
     }
 
     body.dark .item-actions .action-btn {
@@ -1253,7 +1287,6 @@
     $sidebarToggle.addEventListener('click', toggleSidebar);
 
     // Icon SVGs
-    const deleteIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
     const checkIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
 
     // Render List (Todo)
@@ -1262,10 +1295,9 @@
       $listItems.innerHTML = items.map((item, i) => `
         <li class="list-item ${item.done ? 'done' : ''}" data-index="${i}">
           <span class="list-item-text" contenteditable="true">${escapeHtml(item.text)}</span>
-          <div class="item-actions">
+          ${item.text ? `<div class="item-actions">
             <button class="action-btn check-btn">${checkIcon}</button>
-            <button class="action-btn delete-btn">${deleteIcon}</button>
-          </div>
+          </div>` : ''}
         </li>
       `).join('') + `
         <li class="list-placeholder">
@@ -1276,24 +1308,19 @@
       // Attach event listeners to existing items
       $listItems.querySelectorAll('.list-item').forEach((li, i) => {
         const span = li.querySelector('.list-item-text');
-        const deleteBtn = li.querySelector('.delete-btn');
         const checkBtn = li.querySelector('.check-btn');
 
-        checkBtn.addEventListener('click', () => {
-          const items = loadList();
-          items[i].done = !items[i].done;
-          saveList(items);
-          renderList();
-        });
-
-        deleteBtn.addEventListener('click', () => {
-          const items = loadList();
-          items.splice(i, 1);
-          saveList(items);
-          renderList();
-        });
+        if (checkBtn) {
+          checkBtn.addEventListener('click', () => {
+            const items = loadList();
+            items[i].done = !items[i].done;
+            saveList(items);
+            renderList();
+          });
+        }
 
         span.addEventListener('input', () => {
+          replaceArrowsInContentEditable(span);
           const items = loadList();
           items[i].text = span.textContent;
           saveList(items);
@@ -1310,12 +1337,33 @@
             items.splice(i, 1);
             saveList(items);
             renderList();
-            // Focus previous item or placeholder
-            const prevSpan = $listItems.querySelectorAll('.list-item-text')[i - 1];
-            if (prevSpan) {
-              prevSpan.focus();
+            setTimeout(() => {
+              const prevSpan = $listItems.querySelectorAll('.list-item-text')[i - 1];
+              if (prevSpan) {
+                focusAtEnd(prevSpan);
+              } else {
+                $listItems.querySelector('.list-placeholder-text').focus();
+              }
+            }, 0);
+          } else if (e.key === 'Tab' && e.shiftKey) {
+            e.preventDefault();
+            const allSpans = $listItems.querySelectorAll('.list-item-text');
+            if (i > 0) focusAtEnd(allSpans[i - 1]);
+          } else if (e.key === 'Tab' && !e.shiftKey) {
+            e.preventDefault();
+            const allSpans = $listItems.querySelectorAll('.list-item-text');
+            if (i < allSpans.length - 1) {
+              focusAtEnd(allSpans[i + 1]);
             } else {
-              $listItems.querySelector('.list-placeholder-text').focus();
+              // Last item - create a new one
+              const items = loadList();
+              items.push({ id: generateId(), text: '', done: false });
+              saveList(items);
+              renderList();
+              setTimeout(() => {
+                const newSpans = $listItems.querySelectorAll('.list-item-text');
+                if (newSpans.length > 0) newSpans[newSpans.length - 1].focus();
+              }, 0);
             }
           }
         });
@@ -1331,6 +1379,10 @@
         }
       });
 
+      $placeholderText.addEventListener('input', () => {
+        replaceArrowsInContentEditable($placeholderText);
+      });
+
       $placeholderText.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
           e.preventDefault();
@@ -1344,6 +1396,10 @@
               $listItems.querySelector('.list-placeholder-text').focus();
             }, 0);
           }
+        } else if (e.key === 'Backspace' && $placeholderText.textContent === '') {
+          e.preventDefault();
+          const allItems = $listItems.querySelectorAll('.list-item-text');
+          if (allItems.length > 0) focusAtEnd(allItems[allItems.length - 1]);
         }
       });
     };
@@ -1355,6 +1411,7 @@
       $goalInput.value = plan.goal || '';
       $currentDate.textContent = displayDate(currentDate);
       $goalSection.classList.toggle('completed', plan.goalCompleted || false);
+      $goalSection.classList.toggle('empty', !plan.goal);
 
       // Nice to do
       renderNiceItems(plan.niceToDo);
@@ -1379,12 +1436,13 @@
     };
 
     const renderNiceItems = (items) => {
-      $niceItems.innerHTML = items.map((item, i) => `
-        <div class="nice-item-wrapper ${getNiceItemDone(item) ? 'done' : ''}" data-index="${i}">
+      // Ensure there's always at least one empty item to click into
+      const displayItems = items.length === 0 ? [{ text: '', done: false }] : items;
+      $niceItems.innerHTML = displayItems.map((item, i) => `
+        <div class="nice-item-wrapper ${getNiceItemDone(item) ? 'done' : ''} ${!getNiceItemText(item) ? 'empty' : ''}" data-index="${i}">
           <div class="nice-item" contenteditable="true">${escapeHtml(getNiceItemText(item))}</div>
           <div class="item-actions">
             <button class="action-btn check-btn">${checkIcon}</button>
-            <button class="action-btn delete-btn">${deleteIcon}</button>
           </div>
         </div>
       `).join('');
@@ -1392,21 +1450,18 @@
       // Attach listeners
       $niceItems.querySelectorAll('.nice-item-wrapper').forEach((wrapper, i) => {
         const el = wrapper.querySelector('.nice-item');
-        const deleteBtn = wrapper.querySelector('.delete-btn');
         const checkBtn = wrapper.querySelector('.check-btn');
 
         el.addEventListener('input', () => {
           replaceArrowsInContentEditable(el);
           const plan = loadPlan(currentDate);
+          // Ensure array has this index (for placeholder item)
+          while (plan.niceToDo.length <= i) {
+            plan.niceToDo.push({ text: '', done: false });
+          }
           setNiceItemText(plan.niceToDo, i, el.textContent);
           savePlan(currentDate, plan);
-        });
-
-        deleteBtn.addEventListener('click', () => {
-          const plan = loadPlan(currentDate);
-          plan.niceToDo.splice(i, 1);
-          savePlan(currentDate, plan);
-          renderPlan();
+          wrapper.classList.toggle('empty', !el.textContent);
         });
 
         checkBtn.addEventListener('click', () => {
@@ -1436,7 +1491,7 @@
             renderPlan();
             setTimeout(() => {
               const prevEl = $niceItems.querySelectorAll('.nice-item')[i - 1];
-              if (prevEl) prevEl.focus();
+              if (prevEl) focusAtEnd(prevEl);
             }, 0);
           } else if (e.key === 'Tab' && e.shiftKey) {
             e.preventDefault();
@@ -1545,6 +1600,7 @@
       const plan = loadPlan(currentDate);
       plan.goal = $goalInput.value;
       savePlan(currentDate, plan);
+      $goalSection.classList.toggle('empty', !$goalInput.value);
     });
 
     // Confetti function using canvas
@@ -1823,8 +1879,11 @@
     const $installModalBrowser = document.getElementById('install-modal-browser');
     const $installModalSteps = document.getElementById('install-modal-steps');
 
-    // Always hide install hint in extension
-    $installHint.classList.add('hidden');
+    // Check if dismissed or running in Electron
+    const isElectron = window.electronAPI?.isElectron || false;
+    if (localStorage.getItem(INSTALL_DISMISSED_KEY) === 'true' || isElectron) {
+      $installHint.classList.add('hidden');
+    }
 
     // Detect browser
     const detectBrowser = () => {
@@ -1914,16 +1973,26 @@
     // Theme toggle
     const THEME_KEY = 'onething-theme';
 
+    const updateFavicon = (isDark) => {
+      const suffix = isDark ? '-dark' : '';
+      document.getElementById('favicon-ico').href = `favicon${suffix}.ico`;
+      document.getElementById('favicon-32').href = `favicon-32${suffix}.png`;
+      document.getElementById('favicon-16').href = `favicon-16${suffix}.png`;
+    };
+
     const loadTheme = () => {
       const theme = localStorage.getItem(THEME_KEY);
-      if (theme === 'dark') {
+      const isDark = theme === 'dark';
+      if (isDark) {
         document.body.classList.add('dark');
       }
+      updateFavicon(isDark);
     };
 
     const toggleTheme = () => {
       const isDark = document.body.classList.toggle('dark');
       localStorage.setItem(THEME_KEY, isDark ? 'dark' : 'light');
+      updateFavicon(isDark);
     };
 
     $themeToggle.addEventListener('click', toggleTheme);

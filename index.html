@@ -9,8 +9,19 @@
   <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png" id="favicon-16">
   <style>
     :root {
-      --bg-primary: #f7f7f2;
-      --bg-secondary: #efefe8;
+      /* Surface colors */
+      --surface: #f7f7f2;
+      --surface-raised: #ffffff;
+      --surface-elevated: #ffffff;
+      --surface-sunken: #f2f2ec;
+      --surface-tooltip: #363635;
+      --surface-overlay: #818179;
+      --surface-accent-blue: #eaf4fe;
+      --surface-accent-green: #f2f6e1;
+      --surface-accent-purple: #f3f0fa;
+      --surface-tint-accent: #e5eacd;
+      --surface-tint-neutral: #625a220f;
+      /* Ink colors */
       --ink-primary: #292929;
       --ink-secondary-strong: #4e4d4b;
       --ink-secondary: #72726e;
@@ -24,8 +35,19 @@
     }
 
     body.dark {
-      --bg-primary: #292929;
-      --bg-secondary: #333333;
+      /* Surface colors */
+      --surface: #292929;
+      --surface-raised: #313130;
+      --surface-elevated: #363635;
+      --surface-sunken: #212121;
+      --surface-tooltip: #363635;
+      --surface-overlay: #4e4d4b;
+      --surface-accent-blue: #2e303b;
+      --surface-accent-green: #313225;
+      --surface-accent-purple: #34313e;
+      --surface-tint-accent: #434625;
+      --surface-tint-neutral: #ffffff0a;
+      /* Ink colors */
       --ink-primary: #fcfcf8;
       --ink-secondary-strong: #acada8;
       --ink-secondary: #9e9e99;
@@ -46,7 +68,7 @@
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: var(--bg-primary);
+      background: var(--surface-sunken);
       color: var(--ink-primary);
       height: 100vh;
       overflow: hidden;
@@ -244,7 +266,7 @@
       left: 0;
       bottom: 0;
       width: 280px;
-      background: var(--bg-secondary);
+      background: var(--surface);
       border-right: 1px solid var(--border-color);
       transform: translateX(-100%);
       transition: transform 0.2s ease, background-color 0.3s ease, border-color 0.3s ease;
