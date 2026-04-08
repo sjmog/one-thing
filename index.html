@@ -1311,13 +1311,14 @@
             items.splice(i, 1);
             saveList(items);
             renderList();
-            // Focus previous item or placeholder
-            const prevSpan = $listItems.querySelectorAll('.list-item-text')[i - 1];
-            if (prevSpan) {
-              prevSpan.focus();
-            } else {
-              $listItems.querySelector('.list-placeholder-text').focus();
-            }
+            setTimeout(() => {
+              const prevSpan = $listItems.querySelectorAll('.list-item-text')[i - 1];
+              if (prevSpan) {
+                focusAtEnd(prevSpan);
+              } else {
+                $listItems.querySelector('.list-placeholder-text').focus();
+              }
+            }, 0);
           }
         });
       });
@@ -1441,7 +1442,7 @@
             renderPlan();
             setTimeout(() => {
               const prevEl = $niceItems.querySelectorAll('.nice-item')[i - 1];
-              if (prevEl) prevEl.focus();
+              if (prevEl) focusAtEnd(prevEl);
             }, 0);
           } else if (e.key === 'Tab' && e.shiftKey) {
             e.preventDefault();
