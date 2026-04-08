@@ -1823,8 +1823,9 @@
     const $installModalBrowser = document.getElementById('install-modal-browser');
     const $installModalSteps = document.getElementById('install-modal-steps');
 
-    // Check if dismissed
-    if (localStorage.getItem(INSTALL_DISMISSED_KEY) === 'true') {
+    // Check if dismissed or running in Electron
+    const isElectron = window.electronAPI?.isElectron || false;
+    if (localStorage.getItem(INSTALL_DISMISSED_KEY) === 'true' || isElectron) {
       $installHint.classList.add('hidden');
     }
 
