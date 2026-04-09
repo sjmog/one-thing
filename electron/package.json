@@ -1,6 +1,6 @@
 {
   "name": "one-thing",
-  "version": "1.4.3",
+  "version": "1.4.4",
   "description": "One Thing - Daily goal planning app",
   "main": "main.js",
   "scripts": {
