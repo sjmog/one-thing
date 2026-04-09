@@ -71,7 +71,8 @@
     "publish": {
       "provider": "github",
       "owner": "sjmog",
-      "repo": "one-thing"
+      "repo": "one-thing",
+      "releaseType": "release"
     },
     "win": {
       "icon": "icon.png",
