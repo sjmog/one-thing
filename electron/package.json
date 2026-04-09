@@ -9,11 +9,12 @@
     "build:mac": "electron-builder --mac",
     "build:win": "electron-builder --win",
     "build:linux": "electron-builder --linux",
-    "release": "electron-builder --mac --publish always"
+    "release": "export $(cat .env | xargs) && electron-builder --mac --publish always"
   },
   "author": "",
   "license": "MIT",
   "devDependencies": {
+    "dotenv": "^17.4.1",
     "electron": "^33.0.0",
     "electron-builder": "^25.1.8"
   },
@@ -49,7 +50,10 @@
     ],
     "mac": {
       "icon": "icon.png",
-      "target": ["dmg", "zip"],
+      "target": [
+        "dmg",
+        "zip"
+      ],
       "hardenedRuntime": true,
       "gatekeeperAssess": false,
       "entitlements": "entitlements.mac.plist",
