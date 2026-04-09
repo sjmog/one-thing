@@ -279,6 +279,19 @@
       left: 80px;
     }
 
+    /* Electron: draggable titlebar region */
+    body.is-electron .header {
+      -webkit-app-region: drag;
+    }
+
+    body.is-electron .header button,
+    body.is-electron .header .current-date,
+    body.is-electron .sidebar-toggle,
+    body.is-electron .sync-toggle,
+    body.is-electron .theme-toggle {
+      -webkit-app-region: no-drag;
+    }
+
     /* Sidebar */
     .sidebar {
       position: fixed;
@@ -2214,13 +2227,13 @@
     const savedDuration = localStorage.getItem(TIMER_DURATION_KEY);
     const savedSeconds = localStorage.getItem(TIMER_SECONDS_KEY);
     const savedRunning = localStorage.getItem(TIMER_RUNNING_KEY);
-    const savedFocus = localStorage.getItem(TIMER_FOCUS_KEY);
+    const savedTimerFocus = localStorage.getItem(TIMER_FOCUS_KEY);
 
     let timerDuration = savedDuration ? parseInt(savedDuration, 10) : 20 * 60;
     let timerSeconds = savedSeconds ? parseInt(savedSeconds, 10) : timerDuration;
 
-    if (savedFocus) {
-      $timerFocus.textContent = savedFocus;
+    if (savedTimerFocus) {
+      $timerFocus.textContent = savedTimerFocus;
     }
     let timerInterval = null;
     let timerRunning = false;
