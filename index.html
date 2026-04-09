@@ -2205,15 +2205,19 @@
     const TIMER_SECONDS_KEY = 'onething-timer-seconds';
     const TIMER_RUNNING_KEY = 'onething-timer-running';
     const TIMER_FOCUS_KEY = 'onething-timer-focus';
+    const TIMER_STARTED_AT_KEY = 'onething-timer-started-at';
 
     // Load saved values
     const savedDuration = localStorage.getItem(TIMER_DURATION_KEY);
     const savedSeconds = localStorage.getItem(TIMER_SECONDS_KEY);
     const savedRunning = localStorage.getItem(TIMER_RUNNING_KEY);
     const savedTimerFocus = localStorage.getItem(TIMER_FOCUS_KEY);
+    const savedStartedAt = localStorage.getItem(TIMER_STARTED_AT_KEY);
 
     let timerDuration = savedDuration ? parseInt(savedDuration, 10) : 20 * 60;
     let timerSeconds = savedSeconds ? parseInt(savedSeconds, 10) : timerDuration;
+    let timerStartedAt = null;
+    let timerSecondsAtStart = timerSeconds;
 
     if (savedTimerFocus) {
       $timerFocus.textContent = savedTimerFocus;
@@ -2256,7 +2260,7 @@
       }
     };
 
-    const startTimer = (focusField = true) => {
+    const startTimer = (focusField = true, resumeFromTimestamp = null) => {
       if (timerSeconds <= 0) return;
       timerRunning = true;
       $timer.classList.remove('paused');
@@ -2267,13 +2271,24 @@
       $timerDisplay.contentEditable = 'false';
       localStorage.setItem(TIMER_RUNNING_KEY, 'true');
 
+      // Track start time for accurate timing even when tab is backgrounded
+      if (resumeFromTimestamp) {
+        timerStartedAt = resumeFromTimestamp;
+      } else {
+        timerStartedAt = Date.now();
+      }
+      timerSecondsAtStart = timerSeconds;
+      localStorage.setItem(TIMER_STARTED_AT_KEY, timerStartedAt);
+
       // Focus the focus field if empty (only on manual start)
       if (focusField && !$timerFocus.textContent.trim()) {
         $timerFocus.focus();
       }
 
       timerInterval = setInterval(() => {
-        timerSeconds--;
+        // Calculate elapsed time from timestamp (accurate even when throttled)
+        const elapsed = Math.floor((Date.now() - timerStartedAt) / 1000);
+        timerSeconds = Math.max(0, timerSecondsAtStart - elapsed);
         updateTimerDisplay();
         if (timerSeconds <= 0) {
           pauseTimer();
@@ -2290,6 +2305,8 @@
       $timerPlayPause.title = 'Start';
       $timerDisplay.contentEditable = 'true';
       localStorage.setItem(TIMER_RUNNING_KEY, 'false');
+      localStorage.removeItem(TIMER_STARTED_AT_KEY);
+      timerStartedAt = null;
 
       if (timerInterval) {
         clearInterval(timerInterval);
@@ -2335,11 +2352,19 @@
       localStorage.setItem(TIMER_FOCUS_KEY, $timerFocus.textContent);
     });
 
-    updateTimerDisplay();
-
-    // Restore running state
-    if (savedRunning === 'true' && timerSeconds > 0) {
-      startTimer(false);
+    // Restore running state with timestamp-based calculation
+    if (savedRunning === 'true' && savedStartedAt) {
+      const elapsed = Math.floor((Date.now() - parseInt(savedStartedAt, 10)) / 1000);
+      timerSeconds = Math.max(0, timerSeconds - elapsed);
+      if (timerSeconds > 0) {
+        timerSecondsAtStart = timerSeconds;
+        updateTimerDisplay();
+        startTimer(false, Date.now());
+      } else {
+        updateTimerDisplay();
+      }
+    } else {
+      updateTimerDisplay();
     }
 
     // Install hint
