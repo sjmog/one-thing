@@ -24,11 +24,11 @@ After completing a feature:
    - Update version in `extension/manifest.json`
    - Zip the `extension/` folder
    - Upload to Chrome Web Store Developer Dashboard
-3. **Release Desktop App**:
+3. **Release Desktop App** (with auto-update support):
    - Update version in `electron/package.json`
-   - Build: `cd electron && npm run build:mac`
-   - Create GitHub release: `gh release create vX.X.X --title "vX.X.X" --notes "..."`
-   - Upload dmg: `gh release upload vX.X.X "electron/dist/One Thing-X.X.X-arm64.dmg"`
+   - Build and publish: `cd electron && npm run release`
+   - This builds, signs, notarizes, and publishes to GitHub Releases automatically
+   - The app checks for updates on launch and prompts users to install
 
 ## Build Commands (Electron)
 
@@ -81,6 +81,23 @@ npm run db:migrate:local # Run migrations locally
 ## Notes
 
 - The desktop app auto-hides the "install as new tab" hint via `window.electronAPI.isElectron`
-- macOS builds are unsigned; users need to right-click → Open on first launch
+- macOS builds are code signed and notarized for seamless installation
 - Build artifacts go to `electron/dist/` (gitignored)
 - Sync passphrase is stored in localStorage; if forgotten, data is inaccessible
+- Auto-update checks GitHub Releases on app launch
+
+## Auto-Update Setup (macOS Code Signing)
+
+The app uses `electron-updater` with GitHub Releases. Required environment variables for building:
+
+```bash
+# Apple Developer credentials (for code signing)
+export APPLE_ID="your@email.com"
+export APPLE_APP_SPECIFIC_PASSWORD="xxxx-xxxx-xxxx-xxxx"  # Generate at appleid.apple.com
+export APPLE_TEAM_ID="XXXXXXXXXX"  # Your 10-character Team ID
+
+# GitHub token (for publishing releases)
+export GH_TOKEN="ghp_xxxxxxxxxxxx"  # Needs repo scope
+```
+
+To release: `cd electron && npm run release`
