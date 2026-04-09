@@ -1150,21 +1150,8 @@
       height: 18px;
     }
 
-    .sync-toggle.syncing svg {
-      animation: spin 1s linear infinite;
-    }
-
-    .sync-toggle.synced {
-      color: #788c15;
-    }
-
     .sync-toggle.error {
       color: #bd4a30;
-    }
-
-    @keyframes spin {
-      from { transform: rotate(0deg); }
-      to { transform: rotate(360deg); }
     }
 
     body.dark .sync-toggle {
@@ -1173,10 +1160,6 @@
 
     body.dark .sync-toggle:hover {
       color: #72726e;
-    }
-
-    body.dark .sync-toggle.synced {
-      color: #b2c248;
     }
 
     body.dark .sync-toggle.error {
@@ -2374,6 +2357,12 @@
     const isElectron = window.electronAPI?.isElectron || false;
     if (isElectron) {
       document.body.classList.add('is-electron');
+      // Listen for focus check from main process (for auto-update)
+      window.electronAPI.onCheckFocus?.(() => {
+        const activeEl = document.activeElement;
+        const isFocused = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.isContentEditable);
+        window.electronAPI.sendFocusStatus(isFocused);
+      });
     }
     if (localStorage.getItem(INSTALL_DISMISSED_KEY) === 'true' || isElectron) {
       $installHint.classList.add('hidden');
@@ -2538,17 +2527,11 @@
       return keys;
     };
 
-    // Update sync button state
+    // Update sync button state (only shows error state visually)
     const updateSyncToggle = (state) => {
-      $syncToggle.classList.remove('syncing', 'synced', 'error');
-      if (state) {
-        $syncToggle.classList.add(state);
-      }
-      if (state === 'syncing') {
-        $syncToggle.title = 'Syncing...';
-      } else if (state === 'synced') {
-        $syncToggle.title = 'Synced - Click to manage';
-      } else if (state === 'error') {
+      $syncToggle.classList.remove('error');
+      if (state === 'error') {
+        $syncToggle.classList.add('error');
         $syncToggle.title = 'Sync error - Click to retry';
       } else {
         $syncToggle.title = syncEnabled ? 'Sync enabled' : 'Sync settings';

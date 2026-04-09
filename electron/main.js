@@ -1,13 +1,16 @@
-const { app, BrowserWindow, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const { autoUpdater } = require('electron-updater');
 
 // Keep a global reference of the window object to prevent garbage collection
 let mainWindow = null;
+let updateReady = false;
+let focusCheckInterval = null;
 
-// Auto-updater configuration
+// Auto-updater configuration - silent background updates
 autoUpdater.autoDownload = true;
 autoUpdater.autoInstallOnAppQuit = true;
+autoUpdater.logger = null; // Disable verbose logging
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -55,30 +58,33 @@ app.on('activate', () => {
 app.whenReady().then(() => {
   createWindow();
 
-  // Check for updates after app starts (only in production)
+  // Check for updates silently (only in production)
   if (app.isPackaged) {
-    autoUpdater.checkForUpdatesAndNotify();
+    autoUpdater.checkForUpdates();
   }
 });
 
-// Auto-updater events
-autoUpdater.on('update-available', (info) => {
-  console.log('Update available:', info.version);
+// Auto-updater events - silent auto-restart when not focused
+autoUpdater.on('update-downloaded', () => {
+  updateReady = true;
+  // Start checking if we can safely restart
+  if (!focusCheckInterval) {
+    focusCheckInterval = setInterval(() => {
+      if (mainWindow) {
+        mainWindow.webContents.send('check-focus');
+      }
+    }, 2000); // Check every 2 seconds
+  }
 });
 
-autoUpdater.on('update-downloaded', (info) => {
-  dialog.showMessageBox(mainWindow, {
-    type: 'info',
-    title: 'Update Ready',
-    message: `Version ${info.version} has been downloaded and will be installed when you quit the app.`,
-    buttons: ['Restart Now', 'Later']
-  }).then((result) => {
-    if (result.response === 0) {
-      autoUpdater.quitAndInstall();
+// IPC handler for focus check response
+ipcMain.on('focus-status', (event, isFocused) => {
+  if (updateReady && !isFocused) {
+    // No input focused - safe to restart
+    if (focusCheckInterval) {
+      clearInterval(focusCheckInterval);
+      focusCheckInterval = null;
     }
-  });
-});
-
-autoUpdater.on('error', (err) => {
-  console.error('Auto-updater error:', err);
+    autoUpdater.quitAndInstall(true, true); // Silent restart
+  }
 });
