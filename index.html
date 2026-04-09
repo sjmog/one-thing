@@ -1964,6 +1964,68 @@
       sel.addRange(range);
     };
 
+    // Focus preservation for sync
+    let savedFocus = null;
+    const saveFocus = () => {
+      const el = document.activeElement;
+      if (!el || el === document.body) {
+        savedFocus = null;
+        return;
+      }
+      // Identify element by its data attributes or class
+      const focusInfo = {
+        id: el.id,
+        className: el.className,
+        dataIndex: el.closest('[data-index]')?.dataset.index,
+        isGoal: el.id === 'goal-input',
+        isNiceItem: el.classList.contains('nice-item'),
+        isListItem: el.classList.contains('list-item-text'),
+        isPlaceholder: el.classList.contains('list-placeholder-text') || el.classList.contains('nice-placeholder'),
+        cursorPos: null
+      };
+      // Save cursor position for contenteditable
+      const sel = window.getSelection();
+      if (sel.rangeCount > 0) {
+        focusInfo.cursorPos = sel.getRangeAt(0).startOffset;
+      }
+      savedFocus = focusInfo;
+    };
+
+    const restoreFocus = () => {
+      if (!savedFocus) return;
+      let el = null;
+      if (savedFocus.isGoal) {
+        el = document.getElementById('goal-input');
+      } else if (savedFocus.isNiceItem && savedFocus.dataIndex !== undefined) {
+        el = document.querySelector(`.nice-item[data-index="${savedFocus.dataIndex}"]`);
+      } else if (savedFocus.isListItem && savedFocus.dataIndex !== undefined) {
+        el = document.querySelector(`.list-item[data-index="${savedFocus.dataIndex}"] .list-item-text`);
+      } else if (savedFocus.isPlaceholder) {
+        el = document.querySelector('.list-placeholder-text') || document.querySelector('.nice-placeholder');
+      } else if (savedFocus.id) {
+        el = document.getElementById(savedFocus.id);
+      }
+      if (el) {
+        el.focus();
+        // Restore cursor position
+        if (savedFocus.cursorPos !== null && el.childNodes.length > 0) {
+          try {
+            const range = document.createRange();
+            const textNode = el.childNodes[0];
+            const pos = Math.min(savedFocus.cursorPos, textNode.length || 0);
+            range.setStart(textNode, pos);
+            range.collapse(true);
+            const sel = window.getSelection();
+            sel.removeAllRanges();
+            sel.addRange(range);
+          } catch (e) {
+            // Fallback: just focus
+          }
+        }
+      }
+      savedFocus = null;
+    };
+
     // Auto-replace arrows
     const arrowReplacements = [
       { pattern: '->', replacement: '→' },
@@ -2669,10 +2731,12 @@
 
       localStorage.setItem(SYNC_LAST_SYNC_KEY, String(result.serverTime));
 
-      // Re-render UI with synced data
+      // Re-render UI with synced data (preserve focus)
+      saveFocus();
       renderPlan();
       if (sidebarOpen) renderList();
       loadTheme();
+      restoreFocus();
     };
 
     // Regular sync (push local, pull remote)
@@ -2697,10 +2761,12 @@
             localStorage.setItem(item.key, item.value);
           }
           isApplyingSync = false;
-          // Re-render UI
+          // Re-render UI (preserve focus)
+          saveFocus();
           renderPlan();
           if (sidebarOpen) renderList();
           loadTheme();
+          restoreFocus();
         }
 
         if (result && result.serverTime) {
