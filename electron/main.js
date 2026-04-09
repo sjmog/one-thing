@@ -1,6 +1,16 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, nativeTheme } = require('electron');
 const path = require('path');
 const { autoUpdater } = require('electron-updater');
+
+// Update dock icon based on dark mode (macOS only)
+const updateDockIcon = () => {
+  if (process.platform !== 'darwin') return;
+  const iconName = nativeTheme.shouldUseDarkColors ? 'icon-dark.png' : 'icon.png';
+  const iconPath = app.isPackaged
+    ? path.join(process.resourcesPath, iconName)
+    : path.join(__dirname, iconName);
+  app.dock.setIcon(iconPath);
+};
 
 // Keep a global reference of the window object to prevent garbage collection
 let mainWindow = null;
@@ -57,6 +67,12 @@ app.on('activate', () => {
 // Create window when Electron is ready
 app.whenReady().then(() => {
   createWindow();
+
+  // Set dock icon based on current theme
+  updateDockIcon();
+
+  // Listen for theme changes
+  nativeTheme.on('updated', updateDockIcon);
 
   // Check for updates silently (only in production)
   if (app.isPackaged) {

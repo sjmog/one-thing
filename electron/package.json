@@ -24,7 +24,8 @@
     "files": [
       "main.js",
       "preload.js",
-      "icon.png"
+      "icon.png",
+      "icon-dark.png"
     ],
     "extraResources": [
       {
@@ -46,6 +47,14 @@
       {
         "from": "../FunnelSans.woff2",
         "to": "FunnelSans.woff2"
+      },
+      {
+        "from": "icon.png",
+        "to": "icon.png"
+      },
+      {
+        "from": "icon-dark.png",
+        "to": "icon-dark.png"
       }
     ],
     "mac": {
