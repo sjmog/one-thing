@@ -2022,7 +2022,8 @@
         isNiceItem: el.classList.contains('nice-item'),
         isListItem: el.classList.contains('list-item-text'),
         isPlaceholder: el.classList.contains('list-placeholder-text') || el.classList.contains('nice-placeholder'),
-        cursorPos: null
+        cursorPos: null,
+        textContent: el.textContent || ''
       };
       // Save cursor position for contenteditable
       const sel = window.getSelection();
@@ -2047,6 +2048,10 @@
         el = document.getElementById(savedFocus.id);
       }
       if (el) {
+        // Restore text content if lost during re-render (e.g. placeholder recreated empty)
+        if (savedFocus.textContent && !el.textContent) {
+          el.textContent = savedFocus.textContent;
+        }
         el.focus();
         // Restore cursor position
         if (savedFocus.cursorPos !== null && el.childNodes.length > 0) {
@@ -2573,6 +2578,26 @@
     let isSyncing = false;
     let isApplyingSync = false;
 
+    // Capture original localStorage.setItem before overriding
+    const originalSetItem = localStorage.setItem.bind(localStorage);
+
+    // Dirty-key tracking: only push keys actually modified locally
+    const SYNC_DIRTY_KEYS_KEY = 'onething-sync-dirty';
+    const getDirtyKeys = () => {
+      try { return JSON.parse(localStorage.getItem(SYNC_DIRTY_KEYS_KEY)) || {}; }
+      catch { return {}; }
+    };
+    const markKeyDirty = (key) => {
+      const dirty = getDirtyKeys();
+      dirty[key] = Date.now();
+      originalSetItem(SYNC_DIRTY_KEYS_KEY, JSON.stringify(dirty));
+    };
+    const clearDirtyKeys = (keys) => {
+      const dirty = getDirtyKeys();
+      for (const key of keys) delete dirty[key];
+      originalSetItem(SYNC_DIRTY_KEYS_KEY, JSON.stringify(dirty));
+    };
+
     // Keys to sync (all onething-* keys except sync config)
     const getSyncableKeys = () => {
       const keys = [];
@@ -2728,15 +2753,18 @@
       return new Date(lastSync).toLocaleDateString();
     };
 
-    // Push local changes to server
+    // Push local changes to server (only dirty keys)
     const pushChanges = async () => {
       if (!syncEnabled || !syncPassphrase) return;
 
-      const keys = getSyncableKeys();
-      const data = keys.map(key => ({
+      const dirty = getDirtyKeys();
+      const dirtyEntries = Object.entries(dirty);
+      if (dirtyEntries.length === 0) return; // Nothing to push
+
+      const data = dirtyEntries.map(([key, modifiedAt]) => ({
         key,
         value: localStorage.getItem(key) || '',
-        updatedAt: Date.now()
+        updatedAt: modifiedAt
       }));
 
       const response = await fetch(`${SYNC_API_URL}/sync/push`, {
@@ -2746,6 +2774,7 @@
       });
 
       if (!response.ok) throw new Error('Push failed');
+      clearDirtyKeys(dirtyEntries.map(([key]) => key));
       return response.json();
     };
 
@@ -2765,7 +2794,19 @@
 
     // Full sync (initial connect)
     const performFullSync = async () => {
-      // First push all local data
+      // Mark all local keys as dirty for initial push (timestamp 1 = low priority, server wins if newer)
+      const dirty = getDirtyKeys();
+      const keys = getSyncableKeys();
+      let changed = false;
+      for (const key of keys) {
+        if (!dirty[key]) {
+          dirty[key] = 1;
+          changed = true;
+        }
+      }
+      if (changed) originalSetItem(SYNC_DIRTY_KEYS_KEY, JSON.stringify(dirty));
+
+      // Push local changes
       await pushChanges();
 
       // Then pull all remote data
@@ -2779,26 +2820,38 @@
 
       const result = await response.json();
 
-      // Apply remote changes (last-write-wins)
+      // Apply remote changes only if different from local
       isApplyingSync = true;
+      let dataChanged = false;
       for (const item of result.data) {
-        localStorage.setItem(item.key, item.value);
+        if (localStorage.getItem(item.key) !== item.value) {
+          originalSetItem(item.key, item.value);
+          dataChanged = true;
+        }
       }
       isApplyingSync = false;
 
-      localStorage.setItem(SYNC_LAST_SYNC_KEY, String(result.serverTime));
+      originalSetItem(SYNC_LAST_SYNC_KEY, String(result.serverTime));
 
-      // Re-render UI with synced data (preserve focus)
-      saveFocus();
-      renderPlan();
-      if (sidebarOpen) renderList();
-      loadTheme();
-      restoreFocus();
+      // Only re-render if data actually changed
+      if (dataChanged) {
+        saveFocus();
+        renderPlan();
+        if (sidebarOpen) renderList();
+        loadTheme();
+        restoreFocus();
+      }
     };
 
     // Regular sync (push local, pull remote)
     const performSync = async (force = false) => {
       if (isSyncing || (!syncEnabled && !force)) return;
+
+      // Clear pending debounced sync since we're syncing now
+      if (syncDebounceTimer) {
+        clearTimeout(syncDebounceTimer);
+        syncDebounceTimer = null;
+      }
 
       isSyncing = true;
       updateSyncToggle('syncing');
@@ -2812,22 +2865,28 @@
         const result = await pullChanges(lastSync);
 
         if (result && result.data && result.data.length > 0) {
-          // Apply remote changes
+          // Apply remote changes only if different from local
           isApplyingSync = true;
+          let dataChanged = false;
           for (const item of result.data) {
-            localStorage.setItem(item.key, item.value);
+            if (localStorage.getItem(item.key) !== item.value) {
+              originalSetItem(item.key, item.value);
+              dataChanged = true;
+            }
           }
           isApplyingSync = false;
-          // Re-render UI (preserve focus)
-          saveFocus();
-          renderPlan();
-          if (sidebarOpen) renderList();
-          loadTheme();
-          restoreFocus();
+          // Only re-render if data actually changed
+          if (dataChanged) {
+            saveFocus();
+            renderPlan();
+            if (sidebarOpen) renderList();
+            loadTheme();
+            restoreFocus();
+          }
         }
 
         if (result && result.serverTime) {
-          localStorage.setItem(SYNC_LAST_SYNC_KEY, String(result.serverTime));
+          originalSetItem(SYNC_LAST_SYNC_KEY, String(result.serverTime));
         }
 
         updateSyncToggle('synced');
@@ -2846,12 +2905,12 @@
       syncDebounceTimer = setTimeout(() => performSync(), 2000);
     };
 
-    // Override localStorage.setItem to trigger sync
-    const originalSetItem = localStorage.setItem.bind(localStorage);
+    // Override localStorage.setItem to trigger sync and track dirty keys
     localStorage.setItem = (key, value) => {
       originalSetItem(key, value);
       if (!isApplyingSync && key.startsWith('onething-') && !key.startsWith('onething-sync-') &&
           key !== 'onething-timer-running' && key !== 'onething-timer-seconds') {
+        markKeyDirty(key);
         queueSync();
       }
     };
