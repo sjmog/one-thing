@@ -2856,10 +2856,12 @@
 
       const result = await response.json();
 
-      // Apply remote changes only if different from local
+      // Apply remote changes only if different from local AND not locally modified
+      const dirtyNow = getDirtyKeys();
       isApplyingSync = true;
       let dataChanged = false;
       for (const item of result.data) {
+        if (dirtyNow[item.key]) continue; // Don't overwrite local changes
         if (localStorage.getItem(item.key) !== item.value) {
           originalSetItem(item.key, item.value);
           dataChanged = true;
@@ -2901,10 +2903,12 @@
         const result = await pullChanges(lastSync);
 
         if (result && result.data && result.data.length > 0) {
-          // Apply remote changes only if different from local
+          // Apply remote changes only if different from local AND not locally modified
+          const dirty = getDirtyKeys();
           isApplyingSync = true;
           let dataChanged = false;
           for (const item of result.data) {
+            if (dirty[item.key]) continue; // Don't overwrite local changes
             if (localStorage.getItem(item.key) !== item.value) {
               originalSetItem(item.key, item.value);
               dataChanged = true;
@@ -2958,6 +2962,14 @@
 
     // Initial sync on load if enabled
     if (syncEnabled && syncPassphrase) {
+      // On first run with dirty-key tracking, mark all existing keys as dirty
+      // so local data is protected from being overwritten by stale server data
+      if (!localStorage.getItem(SYNC_DIRTY_KEYS_KEY)) {
+        const keys = getSyncableKeys();
+        const dirty = {};
+        for (const key of keys) dirty[key] = Date.now();
+        originalSetItem(SYNC_DIRTY_KEYS_KEY, JSON.stringify(dirty));
+      }
       updateSyncToggle('synced');
       setTimeout(() => performSync(), 1000);
       // Auto-sync every 10 seconds
