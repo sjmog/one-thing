@@ -17,10 +17,18 @@ let mainWindow = null;
 let updateReady = false;
 let focusCheckInterval = null;
 
+const UPDATE_CHECK_INTERVAL_MS = 10 * 1000; // re-check every 10 seconds
+const FOCUS_POLL_INTERVAL_MS = 5000;
+
 // Auto-updater configuration - silent background updates
 autoUpdater.autoDownload = true;
 autoUpdater.autoInstallOnAppQuit = true;
 autoUpdater.logger = null; // Disable verbose logging
+
+// Surface errors so they're visible when the app is launched from a terminal
+autoUpdater.on('error', (error) => {
+  console.error('Auto-updater error:', error);
+});
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -44,6 +52,9 @@ function createWindow() {
     ? path.join(__dirname, '..', 'index.html')
     : path.join(process.resourcesPath, 'index.html');
   mainWindow.loadFile(indexPath);
+
+  // Losing window focus is a good moment to slip in a pending update.
+  mainWindow.on('blur', attemptSilentInstall);
 
   mainWindow.on('closed', () => {
     mainWindow = null;
@@ -77,30 +88,46 @@ app.whenReady().then(() => {
   // Check for updates silently (only in production)
   if (app.isPackaged) {
     autoUpdater.checkForUpdates();
+    // Re-check periodically so long-running sessions still pick up new releases
+    setInterval(() => {
+      if (!updateReady) autoUpdater.checkForUpdates();
+    }, UPDATE_CHECK_INTERVAL_MS);
   }
 });
+
+// Try to install a downloaded update if it's safe right now.
+function attemptSilentInstall() {
+  if (!updateReady || !mainWindow) return;
+
+  // If the window isn't focused the user can't be typing in our app — install now.
+  if (!mainWindow.isFocused()) {
+    finalizeInstall();
+    return;
+  }
+
+  // Window has focus — ask the renderer whether an input is actively focused.
+  mainWindow.webContents.send('check-focus');
+}
+
+function finalizeInstall() {
+  if (focusCheckInterval) {
+    clearInterval(focusCheckInterval);
+    focusCheckInterval = null;
+  }
+  autoUpdater.quitAndInstall(true, true); // Silent restart
+}
 
 // Auto-updater events - silent auto-restart when not focused
 autoUpdater.on('update-downloaded', () => {
   updateReady = true;
-  // Start checking if we can safely restart
+  attemptSilentInstall();
+  // Polling fallback in case the window stays focused and no blur fires
   if (!focusCheckInterval) {
-    focusCheckInterval = setInterval(() => {
-      if (mainWindow) {
-        mainWindow.webContents.send('check-focus');
-      }
-    }, 2000); // Check every 2 seconds
+    focusCheckInterval = setInterval(attemptSilentInstall, FOCUS_POLL_INTERVAL_MS);
   }
 });
 
 // IPC handler for focus check response
 ipcMain.on('focus-status', (event, isFocused) => {
-  if (updateReady && !isFocused) {
-    // No input focused - safe to restart
-    if (focusCheckInterval) {
-      clearInterval(focusCheckInterval);
-      focusCheckInterval = null;
-    }
-    autoUpdater.quitAndInstall(true, true); // Silent restart
-  }
+  if (updateReady && !isFocused) finalizeInstall();
 });

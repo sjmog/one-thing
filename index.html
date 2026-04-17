@@ -2462,7 +2462,10 @@
       // Listen for focus check from main process (for auto-update)
       window.electronAPI.onCheckFocus?.(() => {
         const activeEl = document.activeElement;
-        const isFocused = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.isContentEditable);
+        const inputActive = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.isContentEditable);
+        // Only treat as "user is typing" if the document itself has focus —
+        // otherwise activeElement could be a lingering input the user has already tabbed away from.
+        const isFocused = inputActive && document.hasFocus();
         window.electronAPI.sendFocusStatus(isFocused);
       });
     }
