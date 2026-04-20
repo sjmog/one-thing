@@ -2555,91 +2555,481 @@
       renderList();
     }
 
-    // ===== SYNC FUNCTIONALITY =====
-    // TODO: Replace with your deployed Cloudflare Worker URL
-    const SYNC_API_URL = 'https://one-thing-sync.s-morgan-896.workers.dev';
-    const SYNC_PASSPHRASE_KEY = 'onething-sync-passphrase';
-    const SYNC_LAST_SYNC_KEY = 'onething-sync-last';
-    const SYNC_ENABLED_KEY = 'onething-sync-enabled';
+    // ===== SYNC FUNCTIONALITY (v2) =====
+    //
+    // Record-level sync with HLC (Hybrid Logical Clock) conflict resolution and an
+    // append-only outbox. Each local edit becomes one or more record ops that are pushed
+    // to the server; the server accepts an op iff its (physical, logical, device) HLC
+    // tuple is strictly greater than the stored record's. Pulls paginate by server_seq
+    // so clock skew cannot hide updates. Deletes are tombstones so stale devices cannot
+    // resurrect removed items. The outbox clears by opId, not by key — so edits made
+    // during a network round-trip are structurally safe.
+    //
+    // Record types:
+    //   todo:<id>              one sidebar list item (fields: text, done)
+    //   plan:YYYY-MM-DD        whole-day plan blob  (fields: goal, niceToDo[], hygieneLeft[], hygieneRight[])
+    //   setting:<name>         one setting value    (fields: value)
 
-    const $syncToggle = document.getElementById('sync-toggle');
-    const $syncModal = document.getElementById('sync-modal');
-    const $syncModalOverlay = document.getElementById('sync-modal-overlay');
-    const $syncModalClose = document.getElementById('sync-modal-close');
-    const $syncModalTitle = document.getElementById('sync-modal-title');
-    const $syncModalContent = document.getElementById('sync-modal-content');
-    const $syncPassphrase = document.getElementById('sync-passphrase');
-    const $syncConnectBtn = document.getElementById('sync-connect-btn');
-    const $syncStatus = document.getElementById('sync-status');
+    const Sync = (() => {
+      const API_URL = 'https://one-thing-sync.s-morgan-896.workers.dev';
+      const PULL_INTERVAL_MS = 10000;
+      const SYNC_DEBOUNCE_MS = 500;
+      const MIN_PASSPHRASE_LENGTH = 4;
 
-    let syncEnabled = localStorage.getItem(SYNC_ENABLED_KEY) === 'true';
-    let syncPassphrase = localStorage.getItem(SYNC_PASSPHRASE_KEY) || '';
-    let syncDebounceTimer = null;
-    let isSyncing = false;
-    let isApplyingSync = false;
+      // Sync-owned storage keys (not user data)
+      const K = {
+        deviceId:     'onething-sync-v2-device-id',
+        passphrase:   'onething-sync-v2-passphrase',
+        enabled:      'onething-sync-v2-enabled',
+        syncedOnce:   'onething-sync-v2-synced-once',
+        serverSeq:    'onething-sync-v2-server-seq',
+        hlc:          'onething-sync-v2-hlc',
+        outbox:       'onething-sync-v2-outbox',
+        nextOpId:     'onething-sync-v2-next-op-id',
+        hlcs:         'onething-sync-v2-hlcs',
+        schema:       'onething-sync-v2-schema',
+        lastSync:     'onething-sync-v2-last',
+      };
 
-    // Capture original localStorage.setItem before overriding
-    const originalSetItem = localStorage.setItem.bind(localStorage);
+      // v1 keys we migrate from
+      const V1 = {
+        passphrase: 'onething-sync-passphrase',
+        enabled:    'onething-sync-enabled',
+        last:       'onething-sync-last',
+        dirty:      'onething-sync-dirty',
+      };
 
-    // Dirty-key tracking: only push keys actually modified locally
-    const SYNC_DIRTY_KEYS_KEY = 'onething-sync-dirty';
-    const getDirtyKeys = () => {
-      try { return JSON.parse(localStorage.getItem(SYNC_DIRTY_KEYS_KEY)) || {}; }
-      catch { return {}; }
-    };
-    const markKeyDirty = (key) => {
-      const dirty = getDirtyKeys();
-      dirty[key] = Date.now();
-      originalSetItem(SYNC_DIRTY_KEYS_KEY, JSON.stringify(dirty));
-    };
-    const clearDirtyKeys = (keys) => {
-      const dirty = getDirtyKeys();
-      for (const key of keys) delete dirty[key];
-      originalSetItem(SYNC_DIRTY_KEYS_KEY, JSON.stringify(dirty));
-    };
+      // User-data key classification
+      const LIST_KEY = 'onething-list';
+      const PLAN_PREFIX = 'onething-plan-';
+      const SYNCED_SETTING_KEYS = new Set([
+        'onething-theme',
+        'onething-install-dismissed',
+        'onething-timer-duration',
+        'onething-timer-focus',
+      ]);
+      function isSyncableKey(key) {
+        if (!key) return false;
+        if (key === LIST_KEY) return true;
+        if (key.startsWith(PLAN_PREFIX)) return true;
+        if (SYNCED_SETTING_KEYS.has(key)) return true;
+        return false;
+      }
 
-    // Keys to sync (all onething-* keys except sync config)
-    const getSyncableKeys = () => {
-      const keys = [];
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && key.startsWith('onething-') &&
-            !key.startsWith('onething-sync-') &&
-            key !== 'onething-timer-running' &&
-            key !== 'onething-timer-seconds') {
-          keys.push(key);
+      // Raw storage, captured before we monkey-patch.
+      const origSetItem    = localStorage.setItem.bind(localStorage);
+      const origGetItem    = localStorage.getItem.bind(localStorage);
+      const origRemoveItem = localStorage.removeItem.bind(localStorage);
+
+      // Session state
+      let deviceId    = origGetItem(K.deviceId);
+      let passphrase  = origGetItem(K.passphrase) || '';
+      let enabled     = origGetItem(K.enabled) === 'true';
+      let syncedOnce  = origGetItem(K.syncedOnce) === 'true';
+      let serverSeq   = parseInt(origGetItem(K.serverSeq) || '0', 10);
+      let hlcPhysical = 0, hlcLogical = 0;
+      let outbox      = [];
+      let nextOpId    = 1;
+      let hlcs        = {};
+      let isApplyingRemote = false;
+      let isSyncing        = false;
+      let syncDebounceTimer = null;
+      let pullIntervalHandle = null;
+      let onStatusChange = null;
+
+      try { const h = JSON.parse(origGetItem(K.hlc) || 'null'); if (h) { hlcPhysical = h.physical|0; hlcLogical = h.logical|0; } } catch {}
+      try { outbox = JSON.parse(origGetItem(K.outbox) || '[]'); } catch {}
+      try { nextOpId = parseInt(origGetItem(K.nextOpId) || '1', 10); } catch {}
+      try { hlcs = JSON.parse(origGetItem(K.hlcs) || '{}'); } catch {}
+
+      if (!deviceId) {
+        deviceId = (typeof crypto !== 'undefined' && crypto.randomUUID)
+          ? crypto.randomUUID()
+          : (Date.now() + '-' + Math.random().toString(36).slice(2));
+        origSetItem(K.deviceId, deviceId);
+      }
+
+      // ----- HLC -----
+      function saveHlc() { origSetItem(K.hlc, JSON.stringify({ physical: hlcPhysical, logical: hlcLogical })); }
+
+      function hlcNow() {
+        const wall = Date.now();
+        if (wall > hlcPhysical) { hlcPhysical = wall; hlcLogical = 0; }
+        else { hlcLogical += 1; }
+        saveHlc();
+        return { physical: hlcPhysical, logical: hlcLogical, device: deviceId };
+      }
+
+      function hlcReceive(remote) {
+        const wall = Date.now();
+        const newPhys = Math.max(hlcPhysical, remote.physical, wall);
+        let newLog;
+        if (newPhys === hlcPhysical && newPhys === remote.physical) newLog = Math.max(hlcLogical, remote.logical) + 1;
+        else if (newPhys === hlcPhysical) newLog = hlcLogical + 1;
+        else if (newPhys === remote.physical) newLog = remote.logical + 1;
+        else newLog = 0;
+        hlcPhysical = newPhys; hlcLogical = newLog;
+        saveHlc();
+      }
+
+      function hlcCompare(a, b) {
+        if (a.physical !== b.physical) return a.physical < b.physical ? -1 : 1;
+        if (a.logical  !== b.logical)  return a.logical  < b.logical  ? -1 : 1;
+        if (a.device   !== b.device)   return a.device   < b.device   ? -1 : 1;
+        return 0;
+      }
+
+      // ----- Outbox / hlcs -----
+      function saveOutbox()   { origSetItem(K.outbox, JSON.stringify(outbox)); }
+      function saveHlcs()     { origSetItem(K.hlcs, JSON.stringify(hlcs)); }
+      function saveNextOpId() { origSetItem(K.nextOpId, String(nextOpId)); }
+
+      function enqueueOp(recordType, recordId, fields, deleted) {
+        const op = {
+          opId: nextOpId++,
+          recordType, recordId,
+          fields: fields || {},
+          deleted: !!deleted,
+          hlc: hlcNow(),
+        };
+        outbox.push(op);
+        hlcs[recordType + ':' + recordId] = op.hlc;
+        saveOutbox(); saveHlcs(); saveNextOpId();
+      }
+
+      // ----- Local-edit → record ops -----
+      function emitListOps(oldItems, newItems) {
+        const oldById = new Map();
+        for (const it of oldItems) if (it && it.id) oldById.set(it.id, it);
+        const newById = new Map();
+        for (const it of newItems) if (it && it.id) newById.set(it.id, it);
+        for (const [id, item] of newById) {
+          const old = oldById.get(id);
+          if (!old || (old.text || '') !== (item.text || '') || !!old.done !== !!item.done) {
+            enqueueOp('todo', id, { text: item.text || '', done: !!item.done }, false);
+          }
+        }
+        for (const id of oldById.keys()) {
+          if (!newById.has(id)) enqueueOp('todo', id, {}, true);
         }
       }
-      return keys;
-    };
 
-    // Update sync button state (only shows error state visually)
-    const updateSyncToggle = (state) => {
-      $syncToggle.classList.remove('error');
-      if (state === 'error') {
-        $syncToggle.classList.add('error');
-        $syncToggle.title = 'Sync error - Click to retry';
-      } else {
-        $syncToggle.title = syncEnabled ? 'Sync enabled' : 'Sync settings';
+      function emitBlobOp(key, newValue) {
+        if (key.startsWith(PLAN_PREFIX)) {
+          let fields;
+          try { fields = JSON.parse(newValue); } catch { return; }
+          enqueueOp('plan', key.slice(PLAN_PREFIX.length), fields, false);
+        } else if (SYNCED_SETTING_KEYS.has(key)) {
+          enqueueOp('setting', key.slice('onething-'.length), { value: newValue }, false);
+        }
       }
+
+      // ----- Remote record → local blob -----
+      function applyRemoteRecord(rec) {
+        const mapKey = rec.recordType + ':' + rec.recordId;
+        const local = hlcs[mapKey];
+        if (local && hlcCompare(rec.hlc, local) <= 0) return false;
+        hlcs[mapKey] = rec.hlc;
+        hlcReceive(rec.hlc);
+        if (rec.recordType === 'todo')        applyTodoRecord(rec);
+        else if (rec.recordType === 'plan')   applyPlanRecord(rec);
+        else if (rec.recordType === 'setting') applySettingRecord(rec);
+        return true;
+      }
+
+      function applyTodoRecord(rec) {
+        let items = [];
+        try { items = JSON.parse(origGetItem(LIST_KEY) || '[]'); } catch {}
+        const idx = items.findIndex(it => it && it.id === rec.recordId);
+        if (rec.deleted) {
+          if (idx >= 0) items.splice(idx, 1);
+        } else {
+          const item = { id: rec.recordId, text: rec.fields.text || '', done: !!rec.fields.done };
+          if (idx >= 0) items[idx] = item;
+          else items.push(item);
+        }
+        origSetItem(LIST_KEY, JSON.stringify(items));
+      }
+      function applyPlanRecord(rec) {
+        const lsKey = PLAN_PREFIX + rec.recordId;
+        if (rec.deleted) origRemoveItem(lsKey);
+        else origSetItem(lsKey, JSON.stringify(rec.fields));
+      }
+      function applySettingRecord(rec) {
+        const lsKey = 'onething-' + rec.recordId;
+        if (rec.deleted) origRemoveItem(lsKey);
+        else origSetItem(lsKey, String(rec.fields.value ?? ''));
+      }
+
+      // ----- Monkey-patch localStorage for user-data writes -----
+      localStorage.setItem = (key, value) => {
+        if (isApplyingRemote || !isSyncableKey(key)) { origSetItem(key, value); return; }
+        const prev = origGetItem(key);
+        origSetItem(key, value);
+        if (!enabled || !passphrase) return;
+        if (key === LIST_KEY) {
+          let oldItems = [], newItems = [];
+          try { oldItems = JSON.parse(prev || '[]'); } catch {}
+          try { newItems = JSON.parse(value || '[]'); } catch {}
+          emitListOps(oldItems, newItems);
+        } else {
+          emitBlobOp(key, value);
+        }
+        queueSync();
+      };
+
+      localStorage.removeItem = (key) => {
+        if (isApplyingRemote || !isSyncableKey(key)) { origRemoveItem(key); return; }
+        const prev = origGetItem(key);
+        origRemoveItem(key);
+        if (!enabled || !passphrase) return;
+        if (key === LIST_KEY) {
+          let oldItems = [];
+          try { oldItems = JSON.parse(prev || '[]'); } catch {}
+          for (const it of oldItems) if (it && it.id) enqueueOp('todo', it.id, {}, true);
+        } else if (key.startsWith(PLAN_PREFIX)) {
+          enqueueOp('plan', key.slice(PLAN_PREFIX.length), {}, true);
+        } else if (SYNCED_SETTING_KEYS.has(key)) {
+          enqueueOp('setting', key.slice('onething-'.length), {}, true);
+        }
+        queueSync();
+      };
+
+      // ----- Network -----
+      async function push() {
+        if (outbox.length === 0) return { accepted: 0, rejected: 0 };
+        // Snapshot by opId: entries added to the outbox during the await are NOT in this set,
+        // so they won't be cleared when we remove accepted/rejected ones below. This is the
+        // structural fix for the "typing during network round-trip loses edits" bug.
+        const snapshotIds = new Set(outbox.map(op => op.opId));
+        const ops = outbox.filter(op => snapshotIds.has(op.opId));
+        const response = await fetch(`${API_URL}/v2/push`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ passphrase, deviceId, ops }),
+        });
+        if (!response.ok) throw new Error('Push failed: ' + response.status);
+        const result = await response.json();
+        const handled = new Set();
+        for (const a of (result.accepted || [])) handled.add(a.opId);
+        for (const r of (result.rejected || [])) handled.add(r.opId); // server has newer; drop our stale op
+        outbox = outbox.filter(op => !handled.has(op.opId));
+        saveOutbox();
+        return { accepted: (result.accepted || []).length, rejected: (result.rejected || []).length };
+      }
+
+      async function pull() {
+        const response = await fetch(`${API_URL}/v2/pull`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ passphrase, deviceId, sinceSeq: serverSeq }),
+        });
+        if (!response.ok) throw new Error('Pull failed: ' + response.status);
+        const result = await response.json();
+        const records = result.records || [];
+        if (records.length === 0 && typeof result.serverSeq === 'number') {
+          if (result.serverSeq > serverSeq) {
+            serverSeq = result.serverSeq;
+            origSetItem(K.serverSeq, String(serverSeq));
+          }
+          saveHlcs();
+          return { pulled: 0, changed: false };
+        }
+        isApplyingRemote = true;
+        let changed = false;
+        try {
+          for (const rec of records) if (applyRemoteRecord(rec)) changed = true;
+        } finally {
+          isApplyingRemote = false;
+        }
+        if (typeof result.serverSeq === 'number' && result.serverSeq > serverSeq) {
+          serverSeq = result.serverSeq;
+          origSetItem(K.serverSeq, String(serverSeq));
+        }
+        saveHlcs();
+        return { pulled: records.length, changed };
+      }
+
+      async function syncOnce() {
+        if (!enabled || !passphrase || isSyncing) return;
+        if (syncDebounceTimer) { clearTimeout(syncDebounceTimer); syncDebounceTimer = null; }
+        isSyncing = true;
+        setStatus('syncing');
+        try {
+          await push();
+          const { changed } = await pull();
+          origSetItem(K.lastSync, String(Date.now()));
+          if (!syncedOnce) { syncedOnce = true; origSetItem(K.syncedOnce, 'true'); }
+          if (changed) rerenderAll();
+          setStatus('ok');
+        } catch (e) {
+          console.error('Sync error:', e);
+          setStatus('error');
+        } finally {
+          isSyncing = false;
+        }
+      }
+
+      function queueSync() {
+        if (!enabled || !passphrase) return;
+        if (syncDebounceTimer) clearTimeout(syncDebounceTimer);
+        syncDebounceTimer = setTimeout(() => syncOnce(), SYNC_DEBOUNCE_MS);
+      }
+
+      function startPullLoop() {
+        stopPullLoop();
+        pullIntervalHandle = setInterval(() => syncOnce(), PULL_INTERVAL_MS);
+      }
+      function stopPullLoop() {
+        if (pullIntervalHandle) { clearInterval(pullIntervalHandle); pullIntervalHandle = null; }
+      }
+
+      function rerenderAll() {
+        try {
+          if (typeof saveFocus === 'function') saveFocus();
+          if (typeof renderPlan === 'function') renderPlan();
+          if (typeof sidebarOpen !== 'undefined' && sidebarOpen && typeof renderList === 'function') renderList();
+          if (typeof loadTheme === 'function') loadTheme();
+          if (typeof restoreFocus === 'function') restoreFocus();
+        } catch (e) { console.error('Rerender error:', e); }
+      }
+
+      function setStatus(s) { if (onStatusChange) onStatusChange(s); }
+
+      // ----- Seed outbox from existing local data (first enable on this device) -----
+      function seedOutboxFromLocal() {
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (!isSyncableKey(key)) continue;
+          if (key === LIST_KEY) {
+            let items = [];
+            try { items = JSON.parse(origGetItem(LIST_KEY) || '[]'); } catch {}
+            for (const it of items) {
+              if (it && it.id && !hlcs['todo:' + it.id]) {
+                enqueueOp('todo', it.id, { text: it.text || '', done: !!it.done }, false);
+              }
+            }
+          } else if (key.startsWith(PLAN_PREFIX)) {
+            const id = key.slice(PLAN_PREFIX.length);
+            if (!hlcs['plan:' + id]) {
+              try { enqueueOp('plan', id, JSON.parse(origGetItem(key)), false); } catch {}
+            }
+          } else if (SYNCED_SETTING_KEYS.has(key)) {
+            const id = key.slice('onething-'.length);
+            if (!hlcs['setting:' + id]) {
+              enqueueOp('setting', id, { value: origGetItem(key) }, false);
+            }
+          }
+        }
+      }
+
+      // ----- Migration from v1 -----
+      function migrateV1IfNeeded() {
+        if (origGetItem(K.schema) === '2') return;
+        const v1Pass = origGetItem(V1.passphrase);
+        const v1Enabled = origGetItem(V1.enabled) === 'true';
+        if (v1Pass && !passphrase) {
+          passphrase = v1Pass;
+          origSetItem(K.passphrase, passphrase);
+        }
+        if (v1Enabled && !enabled) {
+          enabled = true;
+          origSetItem(K.enabled, 'true');
+        }
+        if (enabled && passphrase) seedOutboxFromLocal();
+        origRemoveItem(V1.passphrase);
+        origRemoveItem(V1.enabled);
+        origRemoveItem(V1.last);
+        origRemoveItem(V1.dirty);
+        origSetItem(K.schema, '2');
+      }
+
+      // ----- Public API -----
+      async function connect(newPassphrase) {
+        if (!newPassphrase) throw new Error('Passphrase required');
+        if (newPassphrase.length < MIN_PASSPHRASE_LENGTH) {
+          throw new Error('Passphrase must be at least ' + MIN_PASSPHRASE_LENGTH + ' characters');
+        }
+        passphrase = newPassphrase;
+        enabled = true;
+        origSetItem(K.passphrase, passphrase);
+        origSetItem(K.enabled, 'true');
+        if (!syncedOnce) seedOutboxFromLocal();
+        startPullLoop();
+        await syncOnce();
+      }
+
+      function disconnect() {
+        enabled = false;
+        passphrase = '';
+        syncedOnce = false;
+        serverSeq = 0;
+        outbox = [];
+        hlcs = {};
+        origRemoveItem(K.passphrase);
+        origRemoveItem(K.enabled);
+        origRemoveItem(K.syncedOnce);
+        origRemoveItem(K.serverSeq);
+        origRemoveItem(K.outbox);
+        origRemoveItem(K.hlcs);
+        origRemoveItem(K.lastSync);
+        stopPullLoop();
+        setStatus('off');
+      }
+
+      function start() {
+        migrateV1IfNeeded();
+        if (enabled && passphrase) {
+          startPullLoop();
+          // Slight delay so initial render happens first.
+          setTimeout(() => syncOnce(), 500);
+        }
+      }
+
+      return {
+        start, connect, disconnect,
+        syncNow: () => syncOnce(),
+        getLastSync: () => parseInt(origGetItem(K.lastSync) || '0', 10),
+        isEnabled: () => enabled,
+        hasPassphrase: () => !!passphrase,
+        setStatusListener: (cb) => { onStatusChange = cb; },
+      };
+    })();
+
+    // ----- Sync UI wiring -----
+    const $syncToggle       = document.getElementById('sync-toggle');
+    const $syncModal        = document.getElementById('sync-modal');
+    const $syncModalOverlay = document.getElementById('sync-modal-overlay');
+    const $syncModalClose   = document.getElementById('sync-modal-close');
+    const $syncModalTitle   = document.getElementById('sync-modal-title');
+    const $syncModalContent = document.getElementById('sync-modal-content');
+
+    Sync.setStatusListener((state) => {
+      $syncToggle.classList.toggle('error', state === 'error');
+      $syncToggle.title =
+        state === 'error'   ? 'Sync error — click to retry' :
+        state === 'syncing' ? 'Syncing…' :
+        Sync.isEnabled()    ? 'Sync enabled' :
+                              'Sync settings';
+    });
+
+    const getLastSyncDisplay = () => {
+      const last = Sync.getLastSync();
+      if (!last) return 'Never';
+      const diff = Date.now() - last;
+      if (diff < 60000)    return 'Just now';
+      if (diff < 3600000)  return Math.floor(diff / 60000) + ' minutes ago';
+      if (diff < 86400000) return Math.floor(diff / 3600000) + ' hours ago';
+      return new Date(last).toLocaleDateString();
     };
 
-    // Show status message in modal
-    const showSyncStatus = (message, type = 'info') => {
-      $syncStatus.textContent = message;
-      $syncStatus.className = 'sync-status ' + type;
-      $syncStatus.style.display = 'block';
+    const closeSyncModal = () => {
+      $syncModal.classList.remove('open');
+      $syncModalOverlay.classList.remove('open');
     };
 
-    const hideSyncStatus = () => {
-      $syncStatus.style.display = 'none';
-    };
-
-    // Open sync modal
     const openSyncModal = () => {
-      hideSyncStatus();
-      if (syncEnabled && syncPassphrase) {
-        // Show connected state
+      if (Sync.isEnabled() && Sync.hasPassphrase()) {
         $syncModalTitle.textContent = 'Sync Connected';
         $syncModalContent.innerHTML = `
           <p style="margin-bottom: 16px;">Your data is syncing across devices.</p>
@@ -2656,26 +3046,20 @@
           </div>
           <button class="sync-btn sync-btn-secondary" id="sync-disconnect-btn">Disconnect</button>
         `;
-        document.getElementById('sync-now-btn').addEventListener('click', async (e) => {
+        document.getElementById('sync-now-btn').addEventListener('click', async () => {
           const icon = document.getElementById('sync-refresh-icon');
           const textEl = document.getElementById('sync-last-text');
           icon.style.animation = 'spin 1s linear infinite';
           textEl.textContent = 'Syncing...';
-          await performSync(true);
+          await Sync.syncNow();
           icon.style.animation = '';
           textEl.textContent = 'Last sync: ' + getLastSyncDisplay();
         });
         document.getElementById('sync-disconnect-btn').addEventListener('click', () => {
-          syncEnabled = false;
-          syncPassphrase = '';
-          localStorage.removeItem(SYNC_ENABLED_KEY);
-          localStorage.removeItem(SYNC_PASSPHRASE_KEY);
-          localStorage.removeItem(SYNC_LAST_SYNC_KEY);
-          updateSyncToggle();
+          Sync.disconnect();
           closeSyncModal();
         });
       } else {
-        // Show connect form
         $syncModalTitle.textContent = 'Sync Across Devices';
         $syncModalContent.innerHTML = `
           <p style="margin-bottom: 16px;">Enter a passphrase to sync your data across devices. Use the same passphrase on all your devices.</p>
@@ -2686,49 +3070,19 @@
         const $newPassphrase = document.getElementById('sync-passphrase');
         const $newConnectBtn = document.getElementById('sync-connect-btn');
         const $newStatus = document.getElementById('sync-status');
-
         $newConnectBtn.addEventListener('click', async () => {
-          const passphrase = $newPassphrase.value.trim();
-          if (!passphrase) {
-            $newStatus.textContent = 'Please enter a passphrase';
-            $newStatus.className = 'sync-status error';
-            $newStatus.style.display = 'block';
-            return;
-          }
-          if (passphrase.length < 4) {
-            $newStatus.textContent = 'Passphrase must be at least 4 characters';
-            $newStatus.className = 'sync-status error';
-            $newStatus.style.display = 'block';
-            return;
-          }
-
-          $newConnectBtn.disabled = true;
-          $newStatus.textContent = 'Connecting...';
-          $newStatus.className = 'sync-status info';
+          const pw = $newPassphrase.value.trim();
           $newStatus.style.display = 'block';
-
+          $newStatus.className = 'sync-status info';
+          $newStatus.textContent = 'Connecting...';
+          $newConnectBtn.disabled = true;
           try {
-            // Check if sync URL is configured
-            if (SYNC_API_URL.includes('REPLACE_ME')) {
-              throw new Error('Sync backend not configured. See CLAUDE.md for setup instructions.');
-            }
-
-            syncPassphrase = passphrase;
-            localStorage.setItem(SYNC_PASSPHRASE_KEY, passphrase);
-
-            // Do initial full sync
-            await performFullSync();
-
-            syncEnabled = true;
-            localStorage.setItem(SYNC_ENABLED_KEY, 'true');
-            updateSyncToggle('synced');
-
+            await Sync.connect(pw);
             $newStatus.textContent = 'Connected! Your data is now syncing.';
             $newStatus.className = 'sync-status success';
-
-            setTimeout(() => closeSyncModal(), 1500);
-          } catch (error) {
-            $newStatus.textContent = 'Failed to connect: ' + error.message;
+            setTimeout(() => closeSyncModal(), 1200);
+          } catch (e) {
+            $newStatus.textContent = 'Failed to connect: ' + (e.message || e);
             $newStatus.className = 'sync-status error';
             $newConnectBtn.disabled = false;
           }
@@ -2738,207 +3092,11 @@
       $syncModalOverlay.classList.add('open');
     };
 
-    const closeSyncModal = () => {
-      $syncModal.classList.remove('open');
-      $syncModalOverlay.classList.remove('open');
-    };
-
-    const getLastSyncDisplay = () => {
-      const lastSync = parseInt(localStorage.getItem(SYNC_LAST_SYNC_KEY) || '0', 10);
-      if (!lastSync) return 'Never';
-      const diff = Date.now() - lastSync;
-      if (diff < 60000) return 'Just now';
-      if (diff < 3600000) return Math.floor(diff / 60000) + ' minutes ago';
-      if (diff < 86400000) return Math.floor(diff / 3600000) + ' hours ago';
-      return new Date(lastSync).toLocaleDateString();
-    };
-
-    // Push local changes to server (only dirty keys)
-    const pushChanges = async () => {
-      if (!syncEnabled || !syncPassphrase) return;
-
-      const dirty = getDirtyKeys();
-      const dirtyEntries = Object.entries(dirty);
-      if (dirtyEntries.length === 0) return; // Nothing to push
-
-      const data = dirtyEntries.map(([key, modifiedAt]) => ({
-        key,
-        value: localStorage.getItem(key) || '',
-        updatedAt: modifiedAt
-      }));
-
-      const response = await fetch(`${SYNC_API_URL}/sync/push`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ passphrase: syncPassphrase, data })
-      });
-
-      if (!response.ok) throw new Error('Push failed');
-      clearDirtyKeys(dirtyEntries.map(([key]) => key));
-      return response.json();
-    };
-
-    // Pull changes from server
-    const pullChanges = async (since = 0) => {
-      if (!syncEnabled || !syncPassphrase) return;
-
-      const response = await fetch(`${SYNC_API_URL}/sync/pull`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ passphrase: syncPassphrase, since })
-      });
-
-      if (!response.ok) throw new Error('Pull failed');
-      return response.json();
-    };
-
-    // Full sync (initial connect)
-    const performFullSync = async () => {
-      // Mark all local keys as dirty for initial push (timestamp 1 = low priority, server wins if newer)
-      const dirty = getDirtyKeys();
-      const keys = getSyncableKeys();
-      let changed = false;
-      for (const key of keys) {
-        if (!dirty[key]) {
-          dirty[key] = 1;
-          changed = true;
-        }
-      }
-      if (changed) originalSetItem(SYNC_DIRTY_KEYS_KEY, JSON.stringify(dirty));
-
-      // Push local changes
-      await pushChanges();
-
-      // Then pull all remote data
-      const response = await fetch(`${SYNC_API_URL}/sync/full`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ passphrase: syncPassphrase })
-      });
-
-      if (!response.ok) throw new Error('Full sync failed');
-
-      const result = await response.json();
-
-      // Apply remote changes only if different from local AND not locally modified
-      const dirtyNow = getDirtyKeys();
-      isApplyingSync = true;
-      let dataChanged = false;
-      for (const item of result.data) {
-        if (dirtyNow[item.key]) continue; // Don't overwrite local changes
-        if (localStorage.getItem(item.key) !== item.value) {
-          originalSetItem(item.key, item.value);
-          dataChanged = true;
-        }
-      }
-      isApplyingSync = false;
-
-      originalSetItem(SYNC_LAST_SYNC_KEY, String(result.serverTime));
-
-      // Only re-render if data actually changed
-      if (dataChanged) {
-        saveFocus();
-        renderPlan();
-        if (sidebarOpen) renderList();
-        loadTheme();
-        restoreFocus();
-      }
-    };
-
-    // Regular sync (push local, pull remote)
-    const performSync = async (force = false) => {
-      if (isSyncing || (!syncEnabled && !force)) return;
-
-      // Clear pending debounced sync since we're syncing now
-      if (syncDebounceTimer) {
-        clearTimeout(syncDebounceTimer);
-        syncDebounceTimer = null;
-      }
-
-      isSyncing = true;
-      updateSyncToggle('syncing');
-
-      try {
-        // Push local changes
-        await pushChanges();
-
-        // Pull remote changes
-        const lastSync = parseInt(localStorage.getItem(SYNC_LAST_SYNC_KEY) || '0', 10);
-        const result = await pullChanges(lastSync);
-
-        if (result && result.data && result.data.length > 0) {
-          // Apply remote changes only if different from local AND not locally modified
-          const dirty = getDirtyKeys();
-          isApplyingSync = true;
-          let dataChanged = false;
-          for (const item of result.data) {
-            if (dirty[item.key]) continue; // Don't overwrite local changes
-            if (localStorage.getItem(item.key) !== item.value) {
-              originalSetItem(item.key, item.value);
-              dataChanged = true;
-            }
-          }
-          isApplyingSync = false;
-          // Only re-render if data actually changed
-          if (dataChanged) {
-            saveFocus();
-            renderPlan();
-            if (sidebarOpen) renderList();
-            loadTheme();
-            restoreFocus();
-          }
-        }
-
-        if (result && result.serverTime) {
-          originalSetItem(SYNC_LAST_SYNC_KEY, String(result.serverTime));
-        }
-
-        updateSyncToggle('synced');
-      } catch (error) {
-        console.error('Sync error:', error);
-        updateSyncToggle('error');
-      } finally {
-        isSyncing = false;
-      }
-    };
-
-    // Debounced sync on data change
-    const queueSync = () => {
-      if (!syncEnabled) return;
-      if (syncDebounceTimer) clearTimeout(syncDebounceTimer);
-      syncDebounceTimer = setTimeout(() => performSync(), 2000);
-    };
-
-    // Override localStorage.setItem to trigger sync and track dirty keys
-    localStorage.setItem = (key, value) => {
-      originalSetItem(key, value);
-      if (!isApplyingSync && key.startsWith('onething-') && !key.startsWith('onething-sync-') &&
-          key !== 'onething-timer-running' && key !== 'onething-timer-seconds') {
-        markKeyDirty(key);
-        queueSync();
-      }
-    };
-
-    // Event listeners
     $syncToggle.addEventListener('click', openSyncModal);
     $syncModalOverlay.addEventListener('click', closeSyncModal);
     $syncModalClose.addEventListener('click', closeSyncModal);
 
-    // Initial sync on load if enabled
-    if (syncEnabled && syncPassphrase) {
-      // On first run with dirty-key tracking, mark all existing keys as dirty
-      // so local data is protected from being overwritten by stale server data
-      if (!localStorage.getItem(SYNC_DIRTY_KEYS_KEY)) {
-        const keys = getSyncableKeys();
-        const dirty = {};
-        for (const key of keys) dirty[key] = Date.now();
-        originalSetItem(SYNC_DIRTY_KEYS_KEY, JSON.stringify(dirty));
-      }
-      updateSyncToggle('synced');
-      setTimeout(() => performSync(), 1000);
-      // Auto-sync every 10 seconds
-      setInterval(() => performSync(), 10000);
-    }
+    Sync.start();
 
     // ===== MOBILE SWIPE TO COMPLETE =====
     const isMobile = window.matchMedia('(max-width: 600px)').matches;

@@ -1,65 +1,201 @@
 /**
- * One Thing Sync API
- * Cloudflare Worker with D1 database for cross-device sync
+ * One Thing Sync API — v2
+ *
+ * Record-level sync with HLC (Hybrid Logical Clock) conflict resolution. Each record is
+ * identified by (user_id, record_type, record_id). Writes are accepted iff the incoming
+ * HLC tuple (physical, logical, device) is strictly greater than the stored one. Deletes
+ * are tombstones so stale devices cannot resurrect. The server assigns a monotonic
+ * per-user `server_seq` on every accepted write; clients paginate pulls by that cursor
+ * so clock skew cannot hide updates.
  */
 
 interface Env {
   DB: D1Database;
 }
 
-interface SyncItem {
-  key: string;
-  value: string;
-  updatedAt: number;
+interface Hlc {
+  physical: number;
+  logical: number;
+  device: string;
+}
+
+interface PushOp {
+  opId: string;
+  recordType: string;
+  recordId: string;
+  fields: unknown;          // stored as JSON string server-side
+  deleted?: boolean;
+  hlc: Hlc;
 }
 
 interface PushRequest {
   passphrase: string;
-  data: SyncItem[];
+  deviceId: string;
+  ops: PushOp[];
 }
 
 interface PullRequest {
   passphrase: string;
-  since: number;
+  deviceId: string;
+  sinceSeq: number;
 }
 
-interface FullRequest {
-  passphrase: string;
+interface StoredRecord {
+  record_type: string;
+  record_id: string;
+  fields: string;
+  deleted: number;
+  hlc_physical: number;
+  hlc_logical: number;
+  hlc_device: string;
+  server_seq: number;
 }
 
-// Hash passphrase to create user ID (using Web Crypto API)
 async function hashPassphrase(passphrase: string): Promise<string> {
   const encoder = new TextEncoder();
   const data = encoder.encode(passphrase + 'one-thing-salt-v1');
   const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  return Array.from(new Uint8Array(hashBuffer))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
 }
 
-// CORS headers for browser access
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type',
 };
 
-function jsonResponse(data: unknown, status = 200): Response {
+function json(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
     status,
-    headers: {
-      'Content-Type': 'application/json',
-      ...corsHeaders,
-    },
+    headers: { 'Content-Type': 'application/json', ...corsHeaders },
   });
 }
 
-function errorResponse(message: string, status = 400): Response {
-  return jsonResponse({ error: message }, status);
+function err(message: string, status = 400): Response {
+  return json({ error: message }, status);
+}
+
+function serializeRecord(row: StoredRecord) {
+  return {
+    recordType: row.record_type,
+    recordId: row.record_id,
+    fields: JSON.parse(row.fields),
+    deleted: row.deleted === 1,
+    hlc: {
+      physical: row.hlc_physical,
+      logical: row.hlc_logical,
+      device: row.hlc_device,
+    },
+    serverSeq: row.server_seq,
+  };
+}
+
+async function handlePush(body: PushRequest, env: Env): Promise<Response> {
+  if (!body.passphrase || !body.deviceId || !Array.isArray(body.ops)) {
+    return err('Missing passphrase, deviceId, or ops');
+  }
+
+  const userId = await hashPassphrase(body.passphrase);
+
+  // Ensure the user's seq row exists before we try to increment it.
+  await env.DB.prepare(
+    'INSERT OR IGNORE INTO user_seq (user_id, next_seq) VALUES (?1, 1)'
+  ).bind(userId).run();
+
+  const accepted: Array<{ opId: string; serverSeq: number }> = [];
+  const rejected: Array<{ opId: string; current: ReturnType<typeof serializeRecord> | null }> = [];
+
+  for (const op of body.ops) {
+    if (!op.opId || !op.recordType || !op.recordId || !op.hlc) {
+      rejected.push({ opId: op.opId ?? '', current: null });
+      continue;
+    }
+
+    // Allocate the next server_seq atomically. If the upsert is rejected, the seq is
+    // skipped — pull cursors don't care about gaps.
+    const seqRow = await env.DB.prepare(
+      'UPDATE user_seq SET next_seq = next_seq + 1 WHERE user_id = ?1 RETURNING next_seq - 1 AS seq'
+    ).bind(userId).first<{ seq: number }>();
+    if (!seqRow) {
+      rejected.push({ opId: op.opId, current: null });
+      continue;
+    }
+    const newSeq = seqRow.seq;
+
+    const fieldsJson = JSON.stringify(op.fields ?? {});
+    const deletedInt = op.deleted ? 1 : 0;
+    const receivedAt = Date.now();
+
+    // Upsert only if the incoming HLC tuple is strictly greater than the stored one.
+    // RETURNING returns the row iff the write actually applied.
+    const applied = await env.DB.prepare(`
+      INSERT INTO records (
+        user_id, record_type, record_id, fields, deleted,
+        hlc_physical, hlc_logical, hlc_device, server_seq, server_received_at
+      ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)
+      ON CONFLICT (user_id, record_type, record_id) DO UPDATE SET
+        fields = excluded.fields,
+        deleted = excluded.deleted,
+        hlc_physical = excluded.hlc_physical,
+        hlc_logical = excluded.hlc_logical,
+        hlc_device = excluded.hlc_device,
+        server_seq = excluded.server_seq,
+        server_received_at = excluded.server_received_at
+      WHERE (excluded.hlc_physical, excluded.hlc_logical, excluded.hlc_device) >
+            (records.hlc_physical, records.hlc_logical, records.hlc_device)
+      RETURNING server_seq
+    `).bind(
+      userId, op.recordType, op.recordId, fieldsJson, deletedInt,
+      op.hlc.physical, op.hlc.logical, op.hlc.device, newSeq, receivedAt
+    ).first<{ server_seq: number }>();
+
+    if (applied) {
+      accepted.push({ opId: op.opId, serverSeq: applied.server_seq });
+    } else {
+      // Fetch the winning record so the client can reconcile.
+      const current = await env.DB.prepare(
+        `SELECT record_type, record_id, fields, deleted,
+                hlc_physical, hlc_logical, hlc_device, server_seq
+         FROM records WHERE user_id = ?1 AND record_type = ?2 AND record_id = ?3`
+      ).bind(userId, op.recordType, op.recordId).first<StoredRecord>();
+      rejected.push({
+        opId: op.opId,
+        current: current ? serializeRecord(current) : null,
+      });
+    }
+  }
+
+  return json({ accepted, rejected });
+}
+
+async function handlePull(body: PullRequest, env: Env): Promise<Response> {
+  if (!body.passphrase || !body.deviceId) {
+    return err('Missing passphrase or deviceId');
+  }
+
+  const userId = await hashPassphrase(body.passphrase);
+  const sinceSeq = Number.isFinite(body.sinceSeq) ? body.sinceSeq : 0;
+
+  const result = await env.DB.prepare(
+    `SELECT record_type, record_id, fields, deleted,
+            hlc_physical, hlc_logical, hlc_device, server_seq
+     FROM records
+     WHERE user_id = ?1 AND server_seq > ?2
+     ORDER BY server_seq ASC`
+  ).bind(userId, sinceSeq).all<StoredRecord>();
+
+  const records = (result.results ?? []).map(serializeRecord);
+  const serverSeq = records.length > 0
+    ? records[records.length - 1].serverSeq
+    : sinceSeq;
+
+  return json({ records, serverSeq });
 }
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
-    // Handle CORS preflight
     if (request.method === 'OPTIONS') {
       return new Response(null, { headers: corsHeaders });
     }
@@ -68,103 +204,19 @@ export default {
     const path = url.pathname;
 
     try {
-      // POST /sync/push - Push changes to server
-      if (path === '/sync/push' && request.method === 'POST') {
-        const body = await request.json() as PushRequest;
-
-        if (!body.passphrase || !body.data) {
-          return errorResponse('Missing passphrase or data');
-        }
-
-        const userId = await hashPassphrase(body.passphrase);
-        let updated = 0;
-
-        for (const item of body.data) {
-          // Upsert: only update if client timestamp is newer
-          const existing = await env.DB.prepare(
-            'SELECT updated_at FROM sync_data WHERE user_id = ? AND key = ?'
-          ).bind(userId, item.key).first<{ updated_at: number }>();
-
-          if (!existing || existing.updated_at < item.updatedAt) {
-            await env.DB.prepare(
-              `INSERT INTO sync_data (user_id, key, value, updated_at)
-               VALUES (?, ?, ?, ?)
-               ON CONFLICT(user_id, key) DO UPDATE SET
-                 value = excluded.value,
-                 updated_at = excluded.updated_at
-               WHERE excluded.updated_at > sync_data.updated_at`
-            ).bind(userId, item.key, item.value, item.updatedAt).run();
-            updated++;
-          }
-        }
-
-        return jsonResponse({ success: true, updated });
+      if (path === '/v2/push' && request.method === 'POST') {
+        return await handlePush(await request.json() as PushRequest, env);
       }
-
-      // POST /sync/pull - Pull changes since timestamp
-      if (path === '/sync/pull' && request.method === 'POST') {
-        const body = await request.json() as PullRequest;
-
-        if (!body.passphrase) {
-          return errorResponse('Missing passphrase');
-        }
-
-        const userId = await hashPassphrase(body.passphrase);
-        const since = body.since || 0;
-
-        const results = await env.DB.prepare(
-          'SELECT key, value, updated_at FROM sync_data WHERE user_id = ? AND updated_at > ? ORDER BY updated_at ASC'
-        ).bind(userId, since).all<{ key: string; value: string; updated_at: number }>();
-
-        const data = results.results.map(row => ({
-          key: row.key,
-          value: row.value,
-          updatedAt: row.updated_at,
-        }));
-
-        return jsonResponse({
-          success: true,
-          data,
-          serverTime: Date.now()
-        });
+      if (path === '/v2/pull' && request.method === 'POST') {
+        return await handlePull(await request.json() as PullRequest, env);
       }
-
-      // POST /sync/full - Get all user data (initial sync)
-      if (path === '/sync/full' && request.method === 'POST') {
-        const body = await request.json() as FullRequest;
-
-        if (!body.passphrase) {
-          return errorResponse('Missing passphrase');
-        }
-
-        const userId = await hashPassphrase(body.passphrase);
-
-        const results = await env.DB.prepare(
-          'SELECT key, value, updated_at FROM sync_data WHERE user_id = ? ORDER BY updated_at ASC'
-        ).bind(userId).all<{ key: string; value: string; updated_at: number }>();
-
-        const data = results.results.map(row => ({
-          key: row.key,
-          value: row.value,
-          updatedAt: row.updated_at,
-        }));
-
-        return jsonResponse({
-          success: true,
-          data,
-          serverTime: Date.now()
-        });
-      }
-
-      // Health check
       if (path === '/health' || path === '/') {
-        return jsonResponse({ status: 'ok', service: 'one-thing-sync' });
+        return json({ status: 'ok', service: 'one-thing-sync', version: 'v2' });
       }
-
-      return errorResponse('Not found', 404);
-    } catch (error) {
-      console.error('Error:', error);
-      return errorResponse('Internal server error', 500);
+      return err('Not found', 404);
+    } catch (e) {
+      console.error('Error:', e);
+      return err('Internal server error', 500);
     }
   },
 };
