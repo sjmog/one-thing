@@ -292,10 +292,48 @@
     body.is-electron .header button,
     body.is-electron .header .current-date,
     body.is-electron .sidebar-toggle,
+    body.is-electron .toggle-completed,
     body.is-electron .sync-toggle,
     body.is-electron .theme-toggle {
       -webkit-app-region: no-drag;
     }
+
+    /* Hide/Show Completed Toggle */
+    .toggle-completed {
+      position: fixed;
+      top: 8px;
+      left: 196px;
+      z-index: 20;
+      background: none;
+      border: none;
+      color: #acada8;
+      cursor: pointer;
+      padding: 4px 8px;
+      padding-top: 6px;
+      border-radius: 8px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease, color 0s, background 0s;
+    }
+
+    .toggle-completed:hover {
+      color: #72726e;
+    }
+
+    body.sidebar-open .toggle-completed {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .toggle-completed svg {
+      width: 18px;
+      height: 18px;
+      display: block;
+    }
+
+    .toggle-completed .eye-off-icon { display: none; }
+    body.hide-completed .toggle-completed .eye-icon { display: none; }
+    body.hide-completed .toggle-completed .eye-off-icon { display: block; }
 
     /* Sidebar */
     .sidebar {
@@ -363,6 +401,20 @@
     .list-item.animating {
       transition: transform 0.3s ease;
       z-index: 1;
+    }
+
+    .list-item.collapsing {
+      transition: height 0.25s ease, padding-top 0.25s ease, padding-bottom 0.25s ease, opacity 0.25s ease;
+      overflow: hidden;
+    }
+
+    .list-item.collapsed {
+      height: 0;
+      padding-top: 0;
+      padding-bottom: 0;
+      opacity: 0;
+      pointer-events: none;
+      overflow: hidden;
     }
 
     .list-item-text {
@@ -493,6 +545,7 @@
     }
 
     body.dark .sidebar-toggle,
+    body.dark .toggle-completed,
     body.dark .theme-toggle,
     body.dark .header button,
     body.dark .header .current-date,
@@ -503,6 +556,7 @@
     }
 
     body.dark .sidebar-toggle:hover,
+    body.dark .toggle-completed:hover,
     body.dark .theme-toggle:hover,
     body.dark .header button:hover,
     body.dark .header .current-date:hover,
@@ -1112,6 +1166,10 @@
         left: 12px;
       }
 
+      .toggle-completed {
+        left: 48px;
+      }
+
       .theme-toggle {
         right: 12px;
       }
@@ -1429,6 +1487,18 @@
       </svg>
     </button>
 
+    <!-- Hide/Show Completed Toggle -->
+    <button class="toggle-completed" id="toggle-completed" title="Hide completed" aria-label="Hide completed todos">
+      <svg class="eye-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+        <circle cx="12" cy="12" r="3"></circle>
+      </svg>
+      <svg class="eye-off-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+        <line x1="1" y1="1" x2="23" y2="23"></line>
+      </svg>
+    </button>
+
     <!-- Plan Mode -->
     <div class="plan-mode">
     <!-- Install hint -->
@@ -1541,6 +1611,7 @@
     // State
     let currentDate = new Date();
     let sidebarOpen = localStorage.getItem('sidebarOpen') === 'true';
+    let hideCompleted = localStorage.getItem('onething-hide-completed') === 'true';
 
     // Helpers
     const formatDate = (date) => {
@@ -1602,6 +1673,7 @@
     const $listItems = document.getElementById('list-items');
     const $sidebar = document.getElementById('sidebar');
     const $sidebarToggle = document.getElementById('sidebar-toggle');
+    const $toggleCompleted = document.getElementById('toggle-completed');
     const $datePicker = document.getElementById('date-picker');
     const $datePickerOverlay = document.getElementById('date-picker-overlay');
     const $pickerMonth = document.getElementById('picker-month');
@@ -1712,6 +1784,61 @@
 
     $sidebarToggle.addEventListener('click', toggleSidebar);
 
+    // Hide/Show completed toggle
+    const updateToggleCompletedTitle = () => {
+      const label = hideCompleted ? 'Show completed' : 'Hide completed';
+      $toggleCompleted.title = label;
+      $toggleCompleted.setAttribute('aria-label', label + ' todos');
+    };
+    updateToggleCompletedTitle();
+
+    const animateCollapse = (item, fromH, toH) => {
+      item.style.height = fromH + 'px';
+      item.classList.add('collapsing');
+      void item.offsetHeight;
+      if (toH === 0) item.classList.add('collapsed');
+      else item.classList.remove('collapsed');
+      item.style.height = toH + 'px';
+      const cleanup = () => {
+        item.classList.remove('collapsing');
+        item.style.height = '';
+      };
+      let done = false;
+      const onEnd = (e) => {
+        if (done || e.target !== item || e.propertyName !== 'height') return;
+        done = true;
+        item.removeEventListener('transitionend', onEnd);
+        cleanup();
+      };
+      item.addEventListener('transitionend', onEnd);
+      setTimeout(() => { if (!done) { done = true; item.removeEventListener('transitionend', onEnd); cleanup(); } }, 320);
+    };
+
+    const animateCompletedToggle = (toHide) => {
+      const items = $listItems ? $listItems.querySelectorAll('.list-item.done') : [];
+      items.forEach(item => {
+        if (toHide) {
+          const fromH = item.offsetHeight;
+          animateCollapse(item, fromH, 0);
+        } else {
+          item.classList.remove('collapsed');
+          const targetH = item.offsetHeight;
+          item.classList.add('collapsed');
+          animateCollapse(item, 0, targetH);
+        }
+      });
+    };
+
+    const toggleHideCompleted = () => {
+      hideCompleted = !hideCompleted;
+      localStorage.setItem('onething-hide-completed', hideCompleted);
+      document.body.classList.toggle('hide-completed', hideCompleted);
+      updateToggleCompletedTitle();
+      animateCompletedToggle(hideCompleted);
+    };
+
+    $toggleCompleted.addEventListener('click', toggleHideCompleted);
+
     // Icon SVGs
     const checkIcon = `<svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg><svg class="undo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>`;
 
@@ -1740,7 +1867,7 @@
       }
 
       $listItems.innerHTML = sortedItems.map((item) => `
-        <li class="list-item ${item.done ? 'done' : ''}" data-id="${item.id}">
+        <li class="list-item ${item.done ? 'done' : ''}${item.done && hideCompleted ? ' collapsed' : ''}" data-id="${item.id}">
           <span class="list-item-text" contenteditable="true">${escapeHtml(item.text)}</span>
           ${item.text ? `<div class="item-actions">
             <button class="action-btn check-btn">${checkIcon}</button>
@@ -1785,11 +1912,24 @@
           checkBtn.addEventListener('click', () => {
             const items = loadList();
             const idx = findItemIndex(items, itemId);
-            if (idx !== -1) {
-              items[idx].done = !items[idx].done;
-              saveList(items);
-              renderList(itemId);
+            if (idx === -1) return;
+            const wasDone = items[idx].done;
+            items[idx].done = !wasDone;
+            saveList(items);
+
+            if (!wasDone && hideCompleted) {
+              // Item just completed while hiding completed: collapse in place, then re-render silently.
+              const liEl = $listItems.querySelector(`.list-item[data-id="${itemId}"]`);
+              if (liEl) {
+                liEl.classList.add('done');
+                const fromH = liEl.offsetHeight;
+                animateCollapse(liEl, fromH, 0);
+                setTimeout(() => renderList(), 270);
+                return;
+              }
             }
+
+            renderList(itemId);
           });
         }
 
@@ -2587,7 +2727,8 @@
     // Initial render
     renderPlan();
 
-    // Apply initial sidebar state
+    // Apply initial sidebar / hide-completed state
+    if (hideCompleted) document.body.classList.add('hide-completed');
     if (sidebarOpen) {
       $sidebar.classList.add('open');
       document.body.classList.add('sidebar-open');
