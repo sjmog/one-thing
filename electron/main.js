@@ -1,6 +1,21 @@
 const { app, BrowserWindow, ipcMain, nativeTheme } = require('electron');
 const path = require('path');
+const { spawnSync } = require('child_process');
 const { autoUpdater } = require('electron-updater');
+
+// Tag the .app bundle with a Finder Comment so Spotlight finds the app via
+// "1 Thing"/"1thing" too, not just "One Thing". macOS blocks direct writes to
+// signed app bundles even by the app itself, so we go through Finder via
+// AppleScript — it has the privilege the running app lacks. Auto-updates
+// replace the bundle and wipe the comment, so we re-apply on every launch.
+const tagBundleForSpotlight = () => {
+  if (process.platform !== 'darwin' || !app.isPackaged) return;
+  try {
+    const bundlePath = path.dirname(path.dirname(process.resourcesPath));
+    const script = `tell application "Finder" to set comment of (POSIX file ${JSON.stringify(bundlePath)} as alias) to "1 Thing 1thing"`;
+    spawnSync('osascript', ['-e', script], { stdio: 'ignore', timeout: 5000 });
+  } catch {}
+};
 
 // Update dock icon based on dark mode (macOS only)
 const updateDockIcon = () => {
@@ -84,6 +99,9 @@ app.whenReady().then(() => {
 
   // Listen for theme changes
   nativeTheme.on('updated', updateDockIcon);
+
+  // Make Spotlight match "1 thing" too
+  tagBundleForSpotlight();
 
   // Check for updates silently (only in production)
   if (app.isPackaged) {
