@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "One Thing",
-  "description": "A minimal new tab page for daily planning with goal tracking and pomodoro timer",
-  "version": "1.5.1",
+  "description": "A minimal new tab page for daily planning with goal tracking and a persistent backlog",
+  "version": "1.5.3",
   "chrome_url_overrides": {
     "newtab": "newtab.html"
   },

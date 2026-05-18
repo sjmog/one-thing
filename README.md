@@ -1,6 +1,6 @@
 # One Thing
 
-A minimal new tab page for daily planning. Set your goal, track nice-to-dos, and stay focused with a built-in pomodoro timer.
+A minimal new tab page for daily planning. Set your goal, track nice-to-dos, and keep a persistent backlog.
 
 **Live demo:** https://sjmog.github.io/one-thing/
 
@@ -9,8 +9,6 @@ A minimal new tab page for daily planning. Set your goal, track nice-to-dos, and
 - **Daily Goal** - One main focus for the day
 - **Nice to Do** - Secondary tasks that would be nice to complete
 - **Todo Sidebar** - Persistent backlog that carries across days
-- **Pomodoro Timer** - 20-minute default, fully customizable
-- **Focus Mode** - Set what you're working on during each timer session
 - **Dark Mode** - Easy on the eyes
 - **Fully Local** - All data stored in your browser's localStorage
 
@@ -71,9 +69,6 @@ Use the hosted version at https://sjmog.github.io/one-thing/
   - Press `Shift+Tab` or `↑` to move to previous item
   - Hover to reveal check (complete) and × (delete) buttons
 - **Todo Sidebar**: Click the ☰ hamburger menu to open your persistent backlog
-- **Timer**: Click the time to edit, click ▶ to start
-  - Set a "Focus" label when the timer starts
-  - Timer state persists across page refreshes
 - **Dark Mode**: Click the ☀/☾ icon in the top right
 - **Date Navigation**: Use ← → arrows or click the date to jump to any day
 

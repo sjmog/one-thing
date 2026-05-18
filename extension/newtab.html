@@ -537,121 +537,6 @@
       color: #72726e;
     }
 
-
-    /* Timer */
-    .timer {
-      position: fixed;
-      bottom: 20px;
-      right: 24px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      z-index: 10;
-    }
-
-    .timer-display {
-      font-size: 28px;
-      font-weight: 500;
-      font-variant-numeric: tabular-nums;
-      color: #acada8;
-      transition: color 0s ease;
-    }
-
-    .timer.running .timer-display {
-      color: #4e4d4b;
-    }
-
-    .timer-btn {
-      background: none;
-      border: none;
-      cursor: pointer;
-      padding: 8px;
-      color: #acada8;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: color 0s, background 0s;
-    }
-
-    .timer-btn:hover {
-      color: #72726e;
-      background: #f5f5f5;
-    }
-
-    .timer-btn svg {
-      width: 18px;
-      height: 18px;
-    }
-
-    .timer-reset {
-      display: none;
-    }
-
-    .timer.paused.can-reset .timer-reset {
-      display: flex;
-    }
-
-    .timer-display {
-      outline: none;
-    }
-
-    .timer-display:focus {
-      color: #72726e;
-    }
-
-    body.dark .timer-display:focus {
-      color: #72726e;
-    }
-
-    .timer-focus-wrapper {
-      position: absolute;
-      bottom: 100%;
-      left: 50%;
-      transform: translateX(-50%);
-      margin-bottom: 12px;
-      text-align: center;
-    }
-
-    .timer-focus {
-      font-size: 11px;
-      letter-spacing: 3px;
-      text-transform: uppercase;
-      color: #72726e;
-      outline: none;
-      min-width: 120px;
-      min-height: 16px;
-      text-align: center;
-      transition: color 0s ease;
-    }
-
-    .timer-focus:empty::before {
-      content: 'FOCUS';
-      color: #acada8;
-      cursor: text;
-      transition: color 0s;
-    }
-
-    .timer-focus:empty:hover::before {
-      color: #72726e;
-    }
-
-    .timer-focus:empty:focus::before {
-      content: '';
-    }
-
-    body.dark .timer-focus {
-      color: #acada8;
-    }
-
-    body.dark .timer-focus:empty::before {
-      color: #818179;
-    }
-
-    body.dark .timer-focus:empty:hover::before {
-      color: #72726e;
-    }
-
     /* Install hint */
     .install-hint {
       position: fixed;
@@ -817,23 +702,6 @@
     }
 
     body.dark .install-modal-steps code {
-      background: #333;
-    }
-
-    body.dark .timer-display {
-      color: #818179;
-    }
-
-    body.dark .timer.running .timer-display {
-      color: #72726e;
-    }
-
-    body.dark .timer-btn {
-      color: #818179;
-    }
-
-    body.dark .timer-btn:hover {
-      color: #72726e;
       background: #333;
     }
 
@@ -1115,10 +983,6 @@
 
       .nice-section {
         max-width: 100%;
-      }
-
-      .timer {
-        display: none;
       }
 
       .header {
@@ -1490,29 +1354,6 @@
       <div class="install-modal-title">Set as New Tab Page</div>
       <div class="install-modal-browser" id="install-modal-browser"></div>
       <div class="install-modal-steps" id="install-modal-steps"></div>
-    </div>
-
-    <!-- Timer -->
-    <div class="timer paused" id="timer">
-      <div class="timer-focus-wrapper">
-        <div class="timer-focus" id="timer-focus" contenteditable="true"></div>
-      </div>
-      <span class="timer-display" id="timer-display" contenteditable="true">20:00</span>
-      <button class="timer-btn timer-reset" id="timer-reset" title="Reset">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
-          <path d="M3 3v5h5"></path>
-        </svg>
-      </button>
-      <button class="timer-btn timer-play-pause" id="timer-play-pause" title="Start">
-        <svg class="play-icon" viewBox="0 0 24 24" fill="currentColor" stroke="none">
-          <polygon points="6,4 20,12 6,20"></polygon>
-        </svg>
-        <svg class="pause-icon" viewBox="0 0 24 24" fill="currentColor" stroke="none" style="display:none">
-          <rect x="6" y="4" width="4" height="16"></rect>
-          <rect x="14" y="4" width="4" height="16"></rect>
-        </svg>
-      </button>
     </div>
 
     <!-- Sync Toggle -->
@@ -2381,181 +2222,6 @@
       }, 0);
     });
 
-    // Timer
-    const $timer = document.getElementById('timer');
-    const $timerDisplay = document.getElementById('timer-display');
-    const $timerPlayPause = document.getElementById('timer-play-pause');
-    const $timerReset = document.getElementById('timer-reset');
-    const $playIcon = $timerPlayPause.querySelector('.play-icon');
-    const $pauseIcon = $timerPlayPause.querySelector('.pause-icon');
-    const $timerFocus = document.getElementById('timer-focus');
-
-    const TIMER_DURATION_KEY = 'onething-timer-duration';
-    const TIMER_SECONDS_KEY = 'onething-timer-seconds';
-    const TIMER_RUNNING_KEY = 'onething-timer-running';
-    const TIMER_FOCUS_KEY = 'onething-timer-focus';
-    const TIMER_STARTED_AT_KEY = 'onething-timer-started-at';
-
-    // Load saved values
-    const savedDuration = localStorage.getItem(TIMER_DURATION_KEY);
-    const savedSeconds = localStorage.getItem(TIMER_SECONDS_KEY);
-    const savedRunning = localStorage.getItem(TIMER_RUNNING_KEY);
-    const savedTimerFocus = localStorage.getItem(TIMER_FOCUS_KEY);
-    const savedStartedAt = localStorage.getItem(TIMER_STARTED_AT_KEY);
-
-    let timerDuration = savedDuration ? parseInt(savedDuration, 10) : 20 * 60;
-    let timerSeconds = savedSeconds ? parseInt(savedSeconds, 10) : timerDuration;
-    let timerStartedAt = null;
-    let timerSecondsAtStart = timerSeconds;
-
-    if (savedTimerFocus) {
-      $timerFocus.textContent = savedTimerFocus;
-    }
-    let timerInterval = null;
-    let timerRunning = false;
-
-    const formatTimer = (seconds) => {
-      const m = Math.floor(seconds / 60);
-      const s = seconds % 60;
-      return `${m}:${String(s).padStart(2, '0')}`;
-    };
-
-    const parseTimer = (str) => {
-      const cleaned = str.trim();
-      // Try to parse MM:SS or M:SS
-      const match = cleaned.match(/^(\d+):(\d{1,2})$/);
-      if (match) {
-        const m = parseInt(match[1], 10);
-        const s = parseInt(match[2], 10);
-        if (s < 60) return m * 60 + s;
-      }
-      // Try to parse as just minutes
-      const mins = parseInt(cleaned, 10);
-      if (!isNaN(mins) && mins > 0) return mins * 60;
-      return null;
-    };
-
-    const updateTimerDisplay = () => {
-      $timerDisplay.textContent = formatTimer(timerSeconds);
-      localStorage.setItem(TIMER_SECONDS_KEY, timerSeconds);
-      updateResetVisibility();
-    };
-
-    const updateResetVisibility = () => {
-      if (timerSeconds < timerDuration) {
-        $timer.classList.add('can-reset');
-      } else {
-        $timer.classList.remove('can-reset');
-      }
-    };
-
-    const startTimer = (focusField = true, resumeFromTimestamp = null) => {
-      if (timerSeconds <= 0) return;
-      timerRunning = true;
-      $timer.classList.remove('paused');
-      $timer.classList.add('running');
-      $playIcon.style.display = 'none';
-      $pauseIcon.style.display = 'block';
-      $timerPlayPause.title = 'Pause';
-      $timerDisplay.contentEditable = 'false';
-      localStorage.setItem(TIMER_RUNNING_KEY, 'true');
-
-      // Track start time for accurate timing even when tab is backgrounded
-      if (resumeFromTimestamp) {
-        timerStartedAt = resumeFromTimestamp;
-      } else {
-        timerStartedAt = Date.now();
-      }
-      timerSecondsAtStart = timerSeconds;
-      localStorage.setItem(TIMER_STARTED_AT_KEY, timerStartedAt);
-
-      // Focus the focus field if empty (only on manual start)
-      if (focusField && !$timerFocus.textContent.trim()) {
-        $timerFocus.focus();
-      }
-
-      timerInterval = setInterval(() => {
-        // Calculate elapsed time from timestamp (accurate even when throttled)
-        const elapsed = Math.floor((Date.now() - timerStartedAt) / 1000);
-        timerSeconds = Math.max(0, timerSecondsAtStart - elapsed);
-        updateTimerDisplay();
-        if (timerSeconds <= 0) {
-          pauseTimer();
-        }
-      }, 1000);
-    };
-
-    const pauseTimer = () => {
-      timerRunning = false;
-      $timer.classList.remove('running');
-      $timer.classList.add('paused');
-      $playIcon.style.display = 'block';
-      $pauseIcon.style.display = 'none';
-      $timerPlayPause.title = 'Start';
-      $timerDisplay.contentEditable = 'true';
-      localStorage.setItem(TIMER_RUNNING_KEY, 'false');
-      localStorage.removeItem(TIMER_STARTED_AT_KEY);
-      timerStartedAt = null;
-
-      if (timerInterval) {
-        clearInterval(timerInterval);
-        timerInterval = null;
-      }
-      updateResetVisibility();
-    };
-
-    const resetTimer = () => {
-      pauseTimer();
-      timerSeconds = timerDuration;
-      updateTimerDisplay();
-    };
-
-    $timerPlayPause.addEventListener('click', () => {
-      if (timerRunning) {
-        pauseTimer();
-      } else {
-        startTimer(true);
-      }
-    });
-
-    $timerReset.addEventListener('click', resetTimer);
-
-    $timerDisplay.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        $timerDisplay.blur();
-      }
-    });
-
-    $timerDisplay.addEventListener('blur', () => {
-      const parsed = parseTimer($timerDisplay.textContent);
-      if (parsed !== null && parsed > 0) {
-        timerDuration = parsed;
-        timerSeconds = parsed;
-        localStorage.setItem(TIMER_DURATION_KEY, timerDuration);
-      }
-      updateTimerDisplay();
-    });
-
-    $timerFocus.addEventListener('input', () => {
-      localStorage.setItem(TIMER_FOCUS_KEY, $timerFocus.textContent);
-    });
-
-    // Restore running state with timestamp-based calculation
-    if (savedRunning === 'true' && savedStartedAt) {
-      const elapsed = Math.floor((Date.now() - parseInt(savedStartedAt, 10)) / 1000);
-      timerSeconds = Math.max(0, timerSeconds - elapsed);
-      if (timerSeconds > 0) {
-        timerSecondsAtStart = timerSeconds;
-        updateTimerDisplay();
-        startTimer(false, Date.now());
-      } else {
-        updateTimerDisplay();
-      }
-    } else {
-      updateTimerDisplay();
-    }
-
     // Install hint
     const INSTALL_DISMISSED_KEY = 'onething-install-dismissed';
     const $installHint = document.getElementById('install-hint');
@@ -2745,8 +2411,6 @@
       const SYNCED_SETTING_KEYS = new Set([
         'onething-theme',
         'onething-install-dismissed',
-        'onething-timer-duration',
-        'onething-timer-focus',
       ]);
       function isSyncableKey(key) {
         if (!key) return false;
@@ -2897,6 +2561,7 @@
       }
       function applySettingRecord(rec) {
         const lsKey = 'onething-' + rec.recordId;
+        if (!SYNCED_SETTING_KEYS.has(lsKey)) return;
         if (rec.deleted) origRemoveItem(lsKey);
         else origSetItem(lsKey, String(rec.fields.value ?? ''));
       }

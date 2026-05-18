@@ -1,6 +1,6 @@
 # One Thing
 
-Daily goal planning app with pomodoro timer.
+Daily goal planning app.
 
 ## Architecture
 
