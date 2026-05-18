@@ -692,25 +692,27 @@
 
     /* Center content */
     .center-content {
-      position: absolute;
-      top: 38.2%;
-      left: 50%;
-      transform: translateX(-50%);
+      position: fixed;
+      top: clamp(76px, 12vh, 112px);
+      left: 0;
+      right: 0;
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: 20px;
-      transition: left 0.2s ease;
+      padding: 20px clamp(20px, 8vw, 72px);
+      transition: left 0.2s ease, right 0.2s ease;
     }
 
     body.sidebar-open .center-content {
-      left: calc(50% + 140px);
+      left: 280px;
     }
 
     /* Goal */
     .goal-section {
       text-align: center;
       margin-bottom: 32px;
+      width: 100%;
+      max-width: 720px;
     }
 
     .goal-label {
@@ -728,9 +730,10 @@
 
     .goal-wrapper {
       position: relative;
-      display: inline-flex;
+      display: flex;
       align-items: center;
       justify-content: center;
+      width: 100%;
     }
 
     .goal-wrapper::after {
@@ -744,15 +747,16 @@
     }
 
     .goal-input {
-      font-size: 42px;
+      font-size: clamp(28px, 5vw, 42px);
       font-weight: 600;
       border: none;
       background: transparent;
       text-align: center;
-      max-width: 600px;
-      min-width: 200px;
+      width: 100%;
+      min-width: 0;
       color: #292929;
       outline: none;
+      overflow-wrap: anywhere;
       transition: color 0s ease, opacity 0s ease;
     }
 
@@ -811,7 +815,7 @@
     .nice-section {
       text-align: center;
       width: 100%;
-      max-width: 400px;
+      max-width: 720px;
     }
 
     .nice-label {
@@ -949,27 +953,8 @@
       height: 16px;
     }
 
-    /* Mobile: move content to top and allow full width */
+    /* Mobile */
     @media (max-width: 600px) {
-      .center-content {
-        top: 80px;
-        left: 0;
-        right: 0;
-        transform: none;
-        width: 100%;
-        max-width: 100%;
-        padding: 20px;
-      }
-
-      .goal-input {
-        font-size: 28px;
-        max-width: 100%;
-      }
-
-      .nice-section {
-        max-width: 100%;
-      }
-
       .header {
         gap: 8px;
       }
