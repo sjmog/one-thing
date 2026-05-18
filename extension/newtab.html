@@ -99,10 +99,8 @@
       display: flex;
       justify-content: center;
       align-items: center;
-      gap: 16px;
       padding: 16px;
       padding-top: 10px;
-      padding-bottom: 28px;
       z-index: 10;
       transition: left 0.2s ease;
     }
@@ -115,21 +113,28 @@
       background: none;
       border: none;
       color: #acada8;
-      cursor: pointer;
+      cursor: default;
       font-size: 14px;
       padding: 4px 8px;
-      transition: color 0s, opacity 0.12s ease;
+      transition: color 0s;
     }
 
-    .header > button {
+    .date-nav {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 12px;
+      margin: -12px;
+      cursor: default;
+    }
+
+    .date-nav > button {
       opacity: 0;
-      pointer-events: none;
+      transition: color 0s, opacity 0.15s ease-in-out;
     }
 
-    .header:hover > button,
-    .header:focus-within > button {
+    .date-nav:hover > button {
       opacity: 1;
-      pointer-events: auto;
     }
 
     .header button:hover {
@@ -141,12 +146,13 @@
       color: #acada8;
       min-width: 140px;
       text-align: center;
-      cursor: pointer;
+      cursor: default;
       padding: 4px 8px;
       border-radius: 4px;
       transition: color 0s, background 0s;
     }
 
+    .date-nav:hover .current-date,
     .header .current-date:hover {
       color: #72726e;
     }
@@ -532,6 +538,11 @@
     body.dark .goal-label:hover,
     body.dark .nice-label:hover {
       color: #72726e;
+    }
+
+    body.dark .date-nav:hover .current-date,
+    body.dark .date-nav > button:hover {
+      color: #acada8;
     }
 
     /* Install hint */
@@ -1282,9 +1293,11 @@
   <div class="main-content">
     <!-- Header with date nav -->
     <div class="header">
-      <button id="prev-day">&larr;</button>
-      <span class="current-date" id="current-date"></span>
-      <button id="next-day">&rarr;</button>
+      <div class="date-nav">
+        <button id="prev-day">&larr;</button>
+        <span class="current-date" id="current-date"></span>
+        <button id="next-day">&rarr;</button>
+      </div>
 
       <!-- Date Picker -->
       <div class="date-picker-overlay" id="date-picker-overlay"></div>
