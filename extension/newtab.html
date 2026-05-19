@@ -730,6 +730,11 @@
       left: 280px;
     }
 
+    .week-goal-section {
+      margin-bottom: 32px;
+      overflow-wrap: anywhere;
+    }
+
     /* Goal */
     .goal-section {
       text-align: center;
@@ -1357,8 +1362,13 @@
     </div>
 
     <div class="center-content">
+      <div class="nice-section week-goal-section">
+        <div class="nice-label" id="week-goal-label">WEEK GOAL</div>
+        <div class="nice-item" id="week-goal-input" contenteditable="true"></div>
+      </div>
+
       <div class="goal-section" id="goal-section">
-        <div class="goal-label" id="goal-label">GOAL</div>
+        <div class="goal-label" id="goal-label">TODAY GOAL</div>
         <div class="goal-wrapper">
           <div class="goal-input" id="goal-input" contenteditable="true"></div>
           <div class="goal-actions item-actions">
@@ -1397,6 +1407,12 @@
       const label = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
       return formatDate(date) === formatDate(new Date()) ? `༺ ${label} ༻` : label;
     };
+    const weekKey = (date) => {
+      const start = new Date(date);
+      start.setHours(0, 0, 0, 0);
+      start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
+      return `onething-week-${formatDate(start)}`;
+    };
     const generateId = () => Math.random().toString(36).substr(2, 9);
 
     // Storage Keys
@@ -1434,7 +1450,19 @@
       localStorage.setItem(planKey(date), JSON.stringify(plan));
     };
 
+    const loadWeek = (date) => {
+      try {
+        return JSON.parse(localStorage.getItem(weekKey(date))) || { goal: '' };
+      } catch {
+        return { goal: '' };
+      }
+    };
+
+    const saveWeek = (date, week) => localStorage.setItem(weekKey(date), JSON.stringify(week));
+
     // DOM Elements
+    const $weekGoalInput = document.getElementById('week-goal-input');
+    const $weekGoalLabel = document.getElementById('week-goal-label');
     const $goalInput = document.getElementById('goal-input');
     const $goalLabel = document.getElementById('goal-label');
     const $goalSection = document.getElementById('goal-section');
@@ -1808,7 +1836,9 @@
     // Render Plan Mode
     const renderPlan = () => {
       const plan = loadPlan(currentDate);
+      const week = loadWeek(currentDate);
 
+      $weekGoalInput.textContent = week.goal || '';
       $goalInput.textContent = plan.goal || '';
       $currentDate.textContent = displayDate(currentDate);
       $goalSection.classList.toggle('completed', plan.goalCompleted || false);
@@ -2061,6 +2091,12 @@
       return false;
     };
 
+    // Week goal input
+    $weekGoalInput.addEventListener('input', () => {
+      replaceArrowsInContentEditable($weekGoalInput);
+      saveWeek(currentDate, { goal: $weekGoalInput.textContent });
+    });
+
     // Goal input
     $goalInput.addEventListener('input', () => {
       replaceArrowsInContentEditable($goalInput);
@@ -2168,6 +2204,10 @@
     });
 
     // Label click handlers
+    $weekGoalLabel.addEventListener('click', () => {
+      $weekGoalInput.focus();
+    });
+
     $goalLabel.addEventListener('click', () => {
       $goalInput.focus();
     });
@@ -2337,6 +2377,7 @@
     // Record types:
     //   todo:<id>              one sidebar list item (fields: text, done)
     //   plan:YYYY-MM-DD        whole-day plan blob  (fields: goal, niceToDo[], hygieneLeft[], hygieneRight[])
+    //   week:YYYY-MM-DD        week goal blob keyed by Monday (fields: goal)
     //   setting:<name>         one setting value    (fields: value)
 
     const Sync = (() => {
@@ -2371,6 +2412,7 @@
       // User-data key classification
       const LIST_KEY = 'onething-list';
       const PLAN_PREFIX = 'onething-plan-';
+      const WEEK_PREFIX = 'onething-week-';
       const SYNCED_SETTING_KEYS = new Set([
         'onething-theme',
         'onething-install-dismissed',
@@ -2379,6 +2421,7 @@
         if (!key) return false;
         if (key === LIST_KEY) return true;
         if (key.startsWith(PLAN_PREFIX)) return true;
+        if (key.startsWith(WEEK_PREFIX)) return true;
         if (SYNCED_SETTING_KEYS.has(key)) return true;
         return false;
       }
@@ -2486,6 +2529,10 @@
           let fields;
           try { fields = JSON.parse(newValue); } catch { return; }
           enqueueOp('plan', key.slice(PLAN_PREFIX.length), fields, false);
+        } else if (key.startsWith(WEEK_PREFIX)) {
+          let fields;
+          try { fields = JSON.parse(newValue); } catch { return; }
+          enqueueOp('week', key.slice(WEEK_PREFIX.length), fields, false);
         } else if (SYNCED_SETTING_KEYS.has(key)) {
           enqueueOp('setting', key.slice('onething-'.length), { value: newValue }, false);
         }
@@ -2500,6 +2547,7 @@
         hlcReceive(rec.hlc);
         if (rec.recordType === 'todo')        applyTodoRecord(rec);
         else if (rec.recordType === 'plan')   applyPlanRecord(rec);
+        else if (rec.recordType === 'week')   applyWeekRecord(rec);
         else if (rec.recordType === 'setting') applySettingRecord(rec);
         return true;
       }
@@ -2519,6 +2567,11 @@
       }
       function applyPlanRecord(rec) {
         const lsKey = PLAN_PREFIX + rec.recordId;
+        if (rec.deleted) origRemoveItem(lsKey);
+        else origSetItem(lsKey, JSON.stringify(rec.fields));
+      }
+      function applyWeekRecord(rec) {
+        const lsKey = WEEK_PREFIX + rec.recordId;
         if (rec.deleted) origRemoveItem(lsKey);
         else origSetItem(lsKey, JSON.stringify(rec.fields));
       }
@@ -2557,6 +2610,8 @@
           for (const it of oldItems) if (it && it.id) enqueueOp('todo', it.id, {}, true);
         } else if (key.startsWith(PLAN_PREFIX)) {
           enqueueOp('plan', key.slice(PLAN_PREFIX.length), {}, true);
+        } else if (key.startsWith(WEEK_PREFIX)) {
+          enqueueOp('week', key.slice(WEEK_PREFIX.length), {}, true);
         } else if (SYNCED_SETTING_KEYS.has(key)) {
           enqueueOp('setting', key.slice('onething-'.length), {}, true);
         }
@@ -2681,6 +2736,11 @@
             const id = key.slice(PLAN_PREFIX.length);
             if (!hlcs['plan:' + id]) {
               try { enqueueOp('plan', id, JSON.parse(origGetItem(key)), false); } catch {}
+            }
+          } else if (key.startsWith(WEEK_PREFIX)) {
+            const id = key.slice(WEEK_PREFIX.length);
+            if (!hlcs['week:' + id]) {
+              try { enqueueOp('week', id, JSON.parse(origGetItem(key)), false); } catch {}
             }
           } else if (SYNCED_SETTING_KEYS.has(key)) {
             const id = key.slice('onething-'.length);

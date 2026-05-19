@@ -19,12 +19,16 @@ This app has two distribution channels:
 
 After completing a feature:
 
-1. **Commit changes** to main branch
-2. **Release Chrome Extension** (if extension files changed):
+1. **Use `$release` for the full push + release flow**:
+   - Follow `.codex/skills/release/SKILL.md`
+   - It runs visual QA via `.codex/skills/visual-qa/SKILL.md`
+   - GitHub push/PR/release summaries must include screenshots
+2. **Commit changes** to main branch
+3. **Release Chrome Extension** (if extension files changed):
    - Update version in `extension/manifest.json`
    - Zip the `extension/` folder
    - Upload to Chrome Web Store Developer Dashboard
-3. **Release Desktop App** (with auto-update support):
+4. **Release Desktop App** (with auto-update support):
    - Update version in `electron/package.json`
    - Build and publish: `cd electron && npm run release`
    - This builds, signs, notarizes, and publishes to GitHub Releases automatically
