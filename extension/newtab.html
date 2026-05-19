@@ -1364,7 +1364,15 @@
     <div class="center-content">
       <div class="nice-section week-goal-section">
         <div class="nice-label" id="week-goal-label">WEEK GOAL</div>
-        <div class="nice-item" id="week-goal-input" contenteditable="true"></div>
+        <div class="nice-item-wrapper week-goal-wrapper" id="week-goal-wrapper">
+          <div class="nice-item" id="week-goal-input" contenteditable="true"></div>
+          <div class="item-actions">
+            <button class="action-btn check-btn" id="week-goal-check">
+              <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              <svg class="undo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+            </button>
+          </div>
+        </div>
       </div>
 
       <div class="goal-section" id="goal-section">
@@ -1463,6 +1471,8 @@
     // DOM Elements
     const $weekGoalInput = document.getElementById('week-goal-input');
     const $weekGoalLabel = document.getElementById('week-goal-label');
+    const $weekGoalWrapper = document.getElementById('week-goal-wrapper');
+    const $weekGoalCheck = document.getElementById('week-goal-check');
     const $goalInput = document.getElementById('goal-input');
     const $goalLabel = document.getElementById('goal-label');
     const $goalSection = document.getElementById('goal-section');
@@ -1839,6 +1849,8 @@
       const week = loadWeek(currentDate);
 
       $weekGoalInput.textContent = week.goal || '';
+      $weekGoalWrapper.classList.toggle('done', week.goalCompleted || false);
+      $weekGoalWrapper.classList.toggle('empty', !week.goal);
       $goalInput.textContent = plan.goal || '';
       $currentDate.textContent = displayDate(currentDate);
       $goalSection.classList.toggle('completed', plan.goalCompleted || false);
@@ -2094,7 +2106,10 @@
     // Week goal input
     $weekGoalInput.addEventListener('input', () => {
       replaceArrowsInContentEditable($weekGoalInput);
-      saveWeek(currentDate, { goal: $weekGoalInput.textContent });
+      const week = loadWeek(currentDate);
+      week.goal = $weekGoalInput.textContent;
+      saveWeek(currentDate, week);
+      $weekGoalWrapper.classList.toggle('empty', !$weekGoalInput.textContent);
     });
 
     // Goal input
@@ -2179,6 +2194,16 @@
     };
 
     // Goal completion
+    $weekGoalCheck.addEventListener('click', () => {
+      const week = loadWeek(currentDate);
+      week.goalCompleted = !week.goalCompleted;
+      saveWeek(currentDate, week);
+      $weekGoalWrapper.classList.toggle('done', week.goalCompleted);
+      if (week.goalCompleted) {
+        triggerConfetti();
+      }
+    });
+
     $goalCheck.addEventListener('click', () => {
       const plan = loadPlan(currentDate);
       plan.goalCompleted = !plan.goalCompleted;
@@ -2377,7 +2402,7 @@
     // Record types:
     //   todo:<id>              one sidebar list item (fields: text, done)
     //   plan:YYYY-MM-DD        whole-day plan blob  (fields: goal, niceToDo[], hygieneLeft[], hygieneRight[])
-    //   week:YYYY-MM-DD        week goal blob keyed by Monday (fields: goal)
+    //   week:YYYY-MM-DD        week goal blob keyed by Monday (fields: goal, goalCompleted)
     //   setting:<name>         one setting value    (fields: value)
 
     const Sync = (() => {
@@ -2935,7 +2960,7 @@
       let swipeTarget = null;
 
       document.addEventListener('touchstart', (e) => {
-        const target = e.target.closest('.goal-wrapper, .nice-item-wrapper, .list-item');
+        const target = e.target.closest('.goal-wrapper, .week-goal-wrapper, .nice-item-wrapper, .list-item');
         if (target) {
           touchStartX = e.touches[0].clientX;
           touchStartY = e.touches[0].clientY;
@@ -2955,7 +2980,20 @@
         if (Math.abs(deltaX) > 50 && deltaY < 50) {
           const swipeRight = deltaX > 0;
 
-          if (swipeTarget.classList.contains('goal-wrapper')) {
+          if (swipeTarget.classList.contains('week-goal-wrapper')) {
+            const week = loadWeek(currentDate);
+            // Swipe right to complete, swipe left to uncomplete
+            if (swipeRight && !week.goalCompleted) {
+              week.goalCompleted = true;
+              saveWeek(currentDate, week);
+              $weekGoalWrapper.classList.add('done');
+              triggerConfetti();
+            } else if (!swipeRight && week.goalCompleted) {
+              week.goalCompleted = false;
+              saveWeek(currentDate, week);
+              $weekGoalWrapper.classList.remove('done');
+            }
+          } else if (swipeTarget.classList.contains('goal-wrapper')) {
             const plan = loadPlan(currentDate);
             // Swipe right to complete, swipe left to uncomplete
             if (swipeRight && !plan.goalCompleted) {
