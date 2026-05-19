@@ -1423,18 +1423,8 @@
       return `${y}-${m}-${d}`;
     };
     const displayDate = (date) => {
-      const today = new Date();
-      const yesterday = new Date(today);
-      const tomorrow = new Date(today);
-      yesterday.setDate(today.getDate() - 1);
-      tomorrow.setDate(today.getDate() + 1);
-
-      const dateStr = formatDate(date);
-      if (dateStr === formatDate(today)) return 'Today';
-      if (dateStr === formatDate(yesterday)) return 'Yesterday';
-      if (dateStr === formatDate(tomorrow)) return 'Tomorrow';
-
-      return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+      const label = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+      return formatDate(date) === formatDate(new Date()) ? `༺ ${label} ༻` : label;
     };
     const generateId = () => Math.random().toString(36).substr(2, 9);
 
