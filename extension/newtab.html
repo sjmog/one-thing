@@ -97,7 +97,7 @@
       left: 0;
       right: 0;
       display: flex;
-      justify-content: center;
+      justify-content: flex-end;
       align-items: center;
       padding: 16px;
       padding-top: 10px;
@@ -120,17 +120,38 @@
     }
 
     .date-nav {
-      display: flex;
+      display: grid;
+      grid-template-columns: 24px minmax(112px, auto) 24px;
       align-items: center;
-      gap: 16px;
-      padding: 12px;
-      margin: -12px;
+      column-gap: 2px;
+      padding: 2px;
+      border-radius: 999px;
+      background: var(--surface-tint-neutral);
       cursor: default;
     }
 
     .date-nav > button {
-      opacity: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      opacity: 1;
+      cursor: pointer;
+      padding: 0;
+      line-height: 1;
       transition: color 0s, opacity 0.15s ease-in-out;
+    }
+
+    .date-nav > button svg {
+      display: block;
+      width: 14px;
+      height: 14px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2.25;
+      stroke-linecap: round;
+      stroke-linejoin: round;
     }
 
     .date-nav:hover > button {
@@ -142,12 +163,16 @@
     }
 
     .header .current-date {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 24px;
       font-size: 14px;
       color: #acada8;
-      min-width: 140px;
+      min-width: 112px;
       text-align: center;
-      cursor: default;
-      padding: 4px 8px;
+      cursor: pointer;
+      padding: 0 4px;
       border-radius: 4px;
       transition: color 0s, background 0s;
     }
@@ -161,8 +186,7 @@
     .date-picker {
       position: absolute;
       top: 50px;
-      left: 50%;
-      transform: translateX(-50%);
+      right: 16px;
       background: white;
       border-radius: 8px;
       box-shadow: 0 4px 20px rgba(0,0,0,0.15);
@@ -713,7 +737,7 @@
       background: #333;
     }
 
-    /* Center content */
+    /* Plan content */
     .center-content {
       position: fixed;
       top: clamp(76px, 12vh, 112px);
@@ -721,7 +745,7 @@
       right: 0;
       display: flex;
       flex-direction: column;
-      align-items: center;
+      align-items: flex-start;
       padding: 20px clamp(20px, 8vw, 72px);
       transition: left 0.2s ease, right 0.2s ease;
     }
@@ -737,7 +761,7 @@
 
     /* Goal */
     .goal-section {
-      text-align: center;
+      text-align: left;
       margin-bottom: 32px;
       width: 100%;
       max-width: 720px;
@@ -760,7 +784,7 @@
       position: relative;
       display: flex;
       align-items: center;
-      justify-content: center;
+      justify-content: flex-start;
       width: 100%;
     }
 
@@ -779,7 +803,7 @@
       font-weight: 600;
       border: none;
       background: transparent;
-      text-align: center;
+      text-align: left;
       width: 100%;
       min-width: 0;
       color: #292929;
@@ -841,7 +865,7 @@
 
     /* Nice to Do */
     .nice-section {
-      text-align: center;
+      text-align: left;
       width: 100%;
       max-width: 720px;
     }
@@ -862,7 +886,7 @@
     .nice-items {
       display: flex;
       flex-direction: column;
-      align-items: center;
+      align-items: flex-start;
       gap: 8px;
     }
 
@@ -870,7 +894,7 @@
       position: relative;
       display: flex;
       align-items: center;
-      justify-content: center;
+      justify-content: flex-start;
     }
 
     .nice-item-wrapper .item-actions {
@@ -899,7 +923,7 @@
       outline: none;
       min-height: 24px;
       min-width: 100px;
-      text-align: center;
+      text-align: left;
       transition: color 0s ease, opacity 0s ease;
     }
 
@@ -1299,9 +1323,13 @@
     <!-- Header with date nav -->
     <div class="header">
       <div class="date-nav">
-        <button id="prev-day">&larr;</button>
+        <button id="prev-day" aria-label="Previous day">
+          <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"></path></svg>
+        </button>
         <span class="current-date" id="current-date"></span>
-        <button id="next-day">&rarr;</button>
+        <button id="next-day" aria-label="Next day">
+          <svg viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"></path></svg>
+        </button>
       </div>
 
       <!-- Date Picker -->
@@ -1412,8 +1440,7 @@
       return `${y}-${m}-${d}`;
     };
     const displayDate = (date) => {
-      const label = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-      return formatDate(date) === formatDate(new Date()) ? `༺ ${label} ༻` : label;
+      return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
     };
     const weekKey = (date) => {
       const start = new Date(date);
