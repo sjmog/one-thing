@@ -770,8 +770,15 @@
       padding-left: clamp(20px, 8vw, 72px);
     }
 
-    .week-goal-section {
+    .center-content > .nice-section {
       margin-bottom: 32px;
+    }
+
+    .center-content > .nice-section:last-child {
+      margin-bottom: 0;
+    }
+
+    .week-goal-section {
       overflow-wrap: anywhere;
     }
 
@@ -1420,21 +1427,8 @@
         </div>
       </div>
 
-      <div class="nice-section week-goal-section">
-        <div class="nice-label" id="week-goal-label">WEEK GOAL</div>
-        <div class="nice-item-wrapper week-goal-wrapper" id="week-goal-wrapper">
-          <div class="nice-item" id="week-goal-input" contenteditable="true"></div>
-          <div class="item-actions">
-            <button class="action-btn check-btn" id="week-goal-check">
-              <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-              <svg class="undo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
-            </button>
-          </div>
-        </div>
-      </div>
-
       <div class="goal-section" id="goal-section">
-        <div class="goal-label" id="goal-label">TODAY GOAL</div>
+        <div class="goal-label" id="goal-label">GOAL</div>
         <div class="goal-wrapper">
           <div class="goal-input" id="goal-input" contenteditable="true"></div>
           <div class="goal-actions item-actions">
@@ -1449,6 +1443,19 @@
       <div class="nice-section">
         <div class="nice-label" id="nice-label">NICE TO DO</div>
         <div class="nice-items" id="nice-items"></div>
+      </div>
+
+      <div class="nice-section week-goal-section">
+        <div class="nice-label" id="week-goal-label">WEEK</div>
+        <div class="nice-item-wrapper week-goal-wrapper" id="week-goal-wrapper">
+          <div class="nice-item" id="week-goal-input" contenteditable="true"></div>
+          <div class="item-actions">
+            <button class="action-btn check-btn" id="week-goal-check">
+              <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              <svg class="undo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
