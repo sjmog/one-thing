@@ -93,20 +93,13 @@
 
     /* Header */
     .header {
-      position: fixed;
-      left: var(--content-left);
-      right: auto;
-      bottom: 16px;
+      position: relative;
       display: flex;
       justify-content: flex-start;
       align-items: center;
       padding: 0;
+      margin-bottom: 24px;
       z-index: 10;
-      transition: left 0.2s ease;
-    }
-
-    body.sidebar-open .header {
-      left: calc(280px + clamp(20px, 8vw, 72px));
     }
 
     .header button {
@@ -120,32 +113,46 @@
     }
 
     .date-nav {
-      display: grid;
-      grid-template-columns: 18px auto 18px;
+      position: relative;
+      display: inline-flex;
       align-items: center;
-      column-gap: 0;
-      padding: 2px;
+      padding: 2px 0;
       border-radius: 999px;
       background-color: transparent;
       cursor: default;
       transition: none;
     }
 
-    .date-nav:hover {
-      background-color: var(--surface-tint-neutral);
+    .date-nav,
+    .date-nav * {
+      transition: none;
     }
 
     .date-nav > button {
       display: flex;
       align-items: center;
       justify-content: center;
+      position: absolute;
+      top: 2px;
       width: 18px;
       height: 24px;
-      opacity: 1;
+      visibility: hidden;
       cursor: default;
       padding: 0;
       line-height: 1;
       transition: none;
+    }
+
+    .date-nav:hover > button {
+      visibility: visible;
+    }
+
+    .date-nav #prev-day {
+      right: 100%;
+    }
+
+    .date-nav #next-day {
+      left: 100%;
     }
 
     .date-nav > button svg {
@@ -161,10 +168,6 @@
       transition: none;
     }
 
-    .date-nav:hover > button {
-      opacity: 1;
-    }
-
     .header button:hover {
       color: #72726e;
     }
@@ -172,14 +175,14 @@
     .header .current-date {
       display: flex;
       align-items: center;
-      justify-content: center;
+      justify-content: flex-start;
       height: 24px;
       font-size: 14px;
       line-height: 1;
       color: #acada8;
-      text-align: center;
+      text-align: left;
       cursor: default;
-      padding: 0 8px;
+      padding: 0;
       border-radius: 4px;
       transform: translateY(-1.5px);
       transition: none;
@@ -193,7 +196,7 @@
     /* Date Picker */
     .date-picker {
       position: absolute;
-      bottom: 40px;
+      top: 36px;
       left: 0;
       background: white;
       border-radius: 8px;
@@ -444,6 +447,8 @@
       gap: 8px;
       padding: 8px 0;
       position: relative;
+      width: fit-content;
+      max-width: 100%;
     }
 
     .list-item.animating {
@@ -466,11 +471,13 @@
     }
 
     .list-item-text {
-      flex: 1;
+      flex: 0 1 auto;
       font-size: 15px;
       outline: none;
       line-height: 1.4;
       color: var(--ink-primary);
+      min-width: 0;
+      overflow-wrap: anywhere;
     }
 
     .list-item.done .list-item-text {
@@ -628,7 +635,7 @@
     /* Install hint */
     .install-hint {
       position: fixed;
-      bottom: 56px;
+      bottom: 20px;
       left: 20px;
       display: flex;
       align-items: center;
@@ -842,7 +849,8 @@
       display: flex;
       align-items: center;
       justify-content: flex-start;
-      width: 100%;
+      width: fit-content;
+      max-width: 100%;
     }
 
     .goal-wrapper::after {
@@ -861,8 +869,9 @@
       border: none;
       background: transparent;
       text-align: left;
-      width: 100%;
+      width: auto;
       min-width: 0;
+      max-width: 100%;
       color: #292929;
       outline: none;
       overflow-wrap: anywhere;
@@ -871,6 +880,10 @@
 
     .goal-input:empty::before {
       content: '\00a0';
+    }
+
+    .goal-section.empty .goal-input {
+      min-width: 160px;
     }
 
     .goal-section.completed .goal-input {
@@ -952,6 +965,8 @@
       display: flex;
       align-items: center;
       justify-content: flex-start;
+      width: fit-content;
+      max-width: 100%;
     }
 
     .nice-item-wrapper .item-actions {
@@ -979,9 +994,15 @@
       color: #4e4d4b;
       outline: none;
       min-height: 24px;
-      min-width: 100px;
+      min-width: 0;
+      max-width: 100%;
+      overflow-wrap: anywhere;
       text-align: left;
       transition: color 0s ease, opacity 0s ease;
+    }
+
+    .nice-item-wrapper.empty .nice-item {
+      min-width: 100px;
     }
 
     .nice-item:empty::before {
@@ -1091,10 +1112,6 @@
 
       body.sidebar-open .main-content {
         margin-left: 0;
-      }
-
-      body.sidebar-open .header {
-        left: var(--content-left);
       }
 
       body.sidebar-open .center-content {
@@ -1383,30 +1400,6 @@
 
   <!-- Main Content -->
   <div class="main-content">
-    <!-- Header with date nav -->
-    <div class="header">
-      <div class="date-nav">
-        <button id="prev-day" aria-label="Previous day">
-          <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"></path></svg>
-        </button>
-        <span class="current-date" id="current-date"></span>
-        <button id="next-day" aria-label="Next day">
-          <svg viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"></path></svg>
-        </button>
-      </div>
-
-      <!-- Date Picker -->
-      <div class="date-picker-overlay" id="date-picker-overlay"></div>
-      <div class="date-picker" id="date-picker">
-        <div class="date-picker-header">
-          <button id="picker-prev-month">&larr;</button>
-          <span class="date-picker-month" id="picker-month"></span>
-          <button id="picker-next-month">&rarr;</button>
-        </div>
-        <div class="date-picker-grid" id="picker-grid"></div>
-      </div>
-    </div>
-
     <!-- Sidebar Toggle -->
     <button class="sidebar-toggle" id="sidebar-toggle">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1453,6 +1446,30 @@
     </div>
 
     <div class="center-content">
+      <!-- Header with date nav -->
+      <div class="header">
+        <div class="date-nav">
+          <button id="prev-day" aria-label="Previous day">
+            <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"></path></svg>
+          </button>
+          <span class="current-date" id="current-date"></span>
+          <button id="next-day" aria-label="Next day">
+            <svg viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"></path></svg>
+          </button>
+        </div>
+
+        <!-- Date Picker -->
+        <div class="date-picker-overlay" id="date-picker-overlay"></div>
+        <div class="date-picker" id="date-picker">
+          <div class="date-picker-header">
+            <button id="picker-prev-month">&larr;</button>
+            <span class="date-picker-month" id="picker-month"></span>
+            <button id="picker-next-month">&rarr;</button>
+          </div>
+          <div class="date-picker-grid" id="picker-grid"></div>
+        </div>
+      </div>
+
       <div class="nice-section week-goal-section">
         <div class="nice-label" id="week-goal-label">WEEK GOAL</div>
         <div class="nice-item-wrapper week-goal-wrapper" id="week-goal-wrapper">
