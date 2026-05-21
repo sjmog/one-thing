@@ -98,7 +98,7 @@
       justify-content: flex-start;
       align-items: center;
       padding: 0;
-      margin-bottom: 24px;
+      margin-bottom: 25.8125px;
       z-index: 10;
     }
 
@@ -184,7 +184,7 @@
       cursor: default;
       padding: 0;
       border-radius: 4px;
-      transform: translateY(-1.5px);
+      transform: translateY(-1.1875px);
       transition: none;
     }
 
@@ -822,7 +822,7 @@
     }
 
     .center-content > .nice-section {
-      margin-bottom: 32px;
+      margin-bottom: 37px;
     }
 
     .center-content > .nice-section:last-child {
@@ -833,10 +833,14 @@
       overflow-wrap: anywhere;
     }
 
+    .week-goal-section > .nice-label {
+      margin-bottom: 13px;
+    }
+
     /* Goal */
     .goal-section {
       text-align: left;
-      margin-bottom: 32px;
+      margin-bottom: 34px;
       width: 100%;
       max-width: 720px;
     }
@@ -845,7 +849,7 @@
       font-size: 11px;
       letter-spacing: 3px;
       color: #acada8;
-      margin-bottom: 12px;
+      margin-bottom: 15px;
       cursor: pointer;
       transition: color 0s;
     }
@@ -956,7 +960,7 @@
       align-items: center;
       width: fit-content;
       max-width: 100%;
-      margin-bottom: 16px;
+      margin-bottom: 13px;
       transition: margin-bottom 0.2s ease;
     }
 
@@ -1193,6 +1197,19 @@
 
       .header {
         gap: 8px;
+        margin-bottom: 27.734375px;
+      }
+
+      .header .current-date {
+        transform: translateY(0.734375px);
+      }
+
+      .goal-label {
+        margin-bottom: 17px;
+      }
+
+      .goal-section {
+        margin-bottom: 30px;
       }
 
       .item-actions,
@@ -2464,11 +2481,11 @@
 
     // Label click handlers
     $weekGoalLabel.addEventListener('click', () => {
-      $weekGoalInput.focus();
+      focusAtEnd($weekGoalInput);
     });
 
     $goalLabel.addEventListener('click', () => {
-      $goalInput.focus();
+      focusAtEnd($goalInput);
     });
 
     $niceToggle.addEventListener('click', () => {
@@ -2478,7 +2495,6 @@
     $niceLabel.addEventListener('click', () => {
       if (niceCollapsed) {
         setNiceCollapsed(false);
-        return;
       }
       const plan = loadPlan(currentDate);
       if (plan.niceToDo.length === 0) {
@@ -2487,8 +2503,9 @@
         renderPlan();
       }
       setTimeout(() => {
-        const firstItem = $niceItems.querySelector('.nice-item');
-        if (firstItem) firstItem.focus();
+        const items = $niceItems.querySelectorAll('.nice-item');
+        const lastItem = items[items.length - 1];
+        if (lastItem) focusAtEnd(lastItem);
       }, 0);
     });
 
