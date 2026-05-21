@@ -916,12 +916,12 @@
       transition: margin-bottom 0.2s ease;
     }
 
-    .nice-header::before {
+    .nice-header::after {
       content: '';
       position: absolute;
       top: -6px;
       bottom: -6px;
-      left: -24px;
+      left: 100%;
       width: 24px;
     }
 
@@ -943,14 +943,14 @@
 
     .nice-toggle {
       position: absolute;
-      right: 100%;
+      left: 100%;
       top: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
       width: 16px;
       height: 18px;
-      margin-right: 4px;
+      margin-left: 4px;
       padding: 0;
       border: 0;
       background: none;
@@ -959,6 +959,7 @@
       opacity: 0;
       transform: translateY(-50%);
       transition: opacity 0s, color 0s;
+      z-index: 1;
     }
 
     .nice-toggle:hover,
@@ -970,6 +971,17 @@
 
     .nice-toggle:hover {
       color: #72726e;
+    }
+
+    .nice-section.collapsed .nice-label,
+    .nice-section.collapsed .nice-toggle {
+      color: #c4c5bf;
+    }
+
+    .nice-section.collapsed .nice-label:hover,
+    .nice-section.collapsed .nice-toggle:hover,
+    .nice-section.collapsed .nice-header:hover .nice-toggle {
+      color: #acada8;
     }
 
     .nice-toggle svg {
@@ -984,6 +996,12 @@
       transition: none;
     }
 
+    .nice-section.collapsed .nice-toggle svg {
+      width: 12px;
+      height: 12px;
+      stroke-width: 2;
+    }
+
     .nice-toggle .chevron-right {
       display: none;
     }
@@ -994,6 +1012,17 @@
 
     .nice-section.collapsed .nice-toggle .chevron-down {
       display: none;
+    }
+
+    body.dark .nice-section.collapsed .nice-label,
+    body.dark .nice-section.collapsed .nice-toggle {
+      color: #5f5f5b;
+    }
+
+    body.dark .nice-section.collapsed .nice-label:hover,
+    body.dark .nice-section.collapsed .nice-toggle:hover,
+    body.dark .nice-section.collapsed .nice-header:hover .nice-toggle {
+      color: #818179;
     }
 
     .nice-items-shell {
