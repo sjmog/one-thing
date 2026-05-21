@@ -610,6 +610,7 @@
     body.dark .toggle-completed,
     body.dark .theme-toggle,
     body.dark .header button,
+    body.dark .nice-toggle,
     body.dark .header .current-date,
     body.dark .goal-label,
     body.dark .nice-label,
@@ -621,6 +622,8 @@
     body.dark .toggle-completed:hover,
     body.dark .theme-toggle:hover,
     body.dark .header button:hover,
+    body.dark .nice-toggle:hover,
+    body.dark .nice-header:hover .nice-toggle,
     body.dark .header .current-date:hover,
     body.dark .goal-label:hover,
     body.dark .nice-label:hover {
@@ -947,11 +950,33 @@
       max-width: 720px;
     }
 
+    .nice-header {
+      position: relative;
+      display: flex;
+      align-items: center;
+      width: fit-content;
+      max-width: 100%;
+      margin-bottom: 16px;
+      transition: margin-bottom 0.2s ease;
+    }
+
+    .nice-header::before {
+      content: '';
+      position: absolute;
+      top: -6px;
+      bottom: -6px;
+      left: -24px;
+      width: 24px;
+    }
+
+    .nice-section.collapsed .nice-header {
+      margin-bottom: 0;
+    }
+
     .nice-label {
       font-size: 11px;
       letter-spacing: 3px;
       color: #acada8;
-      margin-bottom: 16px;
       cursor: pointer;
       transition: color 0s;
     }
@@ -960,11 +985,81 @@
       color: #72726e;
     }
 
+    .nice-toggle {
+      position: absolute;
+      right: 100%;
+      top: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 16px;
+      height: 18px;
+      margin-right: 4px;
+      padding: 0;
+      border: 0;
+      background: none;
+      color: #acada8;
+      cursor: default;
+      opacity: 0;
+      transform: translateY(-50%);
+      transition: opacity 0s, color 0s;
+    }
+
+    .nice-toggle:hover,
+    .nice-toggle:focus-visible,
+    .nice-header:hover .nice-toggle,
+    .nice-section.collapsed .nice-toggle {
+      opacity: 1;
+    }
+
+    .nice-toggle:hover {
+      color: #72726e;
+    }
+
+    .nice-toggle svg {
+      display: block;
+      width: 14px;
+      height: 14px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2.25;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      transition: none;
+    }
+
+    .nice-toggle .chevron-right {
+      display: none;
+    }
+
+    .nice-section.collapsed .nice-toggle .chevron-right {
+      display: block;
+    }
+
+    .nice-section.collapsed .nice-toggle .chevron-down {
+      display: none;
+    }
+
+    .nice-items-shell {
+      display: grid;
+      grid-template-rows: 1fr;
+      opacity: 1;
+      transition: grid-template-rows 0.2s ease, opacity 0.2s ease;
+    }
+
+    .nice-section.collapsed .nice-items-shell {
+      grid-template-rows: 0fr;
+      opacity: 0;
+      pointer-events: none;
+    }
+
     .nice-items {
       display: flex;
       flex-direction: column;
       align-items: flex-start;
       gap: 8px;
+      min-height: 0;
+      overflow: hidden;
     }
 
     .nice-item-wrapper {
@@ -1490,9 +1585,17 @@
         </div>
       </div>
 
-      <div class="nice-section">
-        <div class="nice-label" id="nice-label">NICE TO DO</div>
-        <div class="nice-items" id="nice-items"></div>
+      <div class="nice-section" id="nice-section">
+        <div class="nice-header" id="nice-header">
+          <button class="nice-toggle" id="nice-toggle" aria-label="Collapse Nice to do" aria-expanded="true">
+            <svg class="chevron-right" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"></path></svg>
+            <svg class="chevron-down" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"></path></svg>
+          </button>
+          <div class="nice-label" id="nice-label">NICE TO DO</div>
+        </div>
+        <div class="nice-items-shell" id="nice-items-shell">
+          <div class="nice-items" id="nice-items"></div>
+        </div>
       </div>
 
       <div class="nice-section week-goal-section">
@@ -1515,9 +1618,11 @@
 
   <script>
     // State
+    const NICE_COLLAPSED_KEY = 'onething-nice-collapsed';
     let currentDate = new Date();
     let sidebarOpen = localStorage.getItem('sidebarOpen') === 'true';
     let hideCompleted = localStorage.getItem('onething-hide-completed') === 'true';
+    let niceCollapsed = localStorage.getItem(NICE_COLLAPSED_KEY) === 'true';
 
     // Helpers
     const formatDate = (date) => {
@@ -1592,6 +1697,8 @@
     const $goalSection = document.getElementById('goal-section');
     const $goalCheck = document.getElementById('goal-check');
     const $confettiCanvas = document.getElementById('confetti-canvas');
+    const $niceSection = document.getElementById('nice-section');
+    const $niceToggle = document.getElementById('nice-toggle');
     const $niceItems = document.getElementById('nice-items');
     const $niceLabel = document.getElementById('nice-label');
     const $themeToggle = document.getElementById('theme-toggle');
@@ -1612,6 +1719,19 @@
     // Date picker state
     let pickerDate = new Date();
     let pickerOpen = false;
+
+    const setNiceCollapsed = (collapsed) => {
+      niceCollapsed = collapsed;
+      localStorage.setItem(NICE_COLLAPSED_KEY, collapsed ? 'true' : 'false');
+      $niceSection.classList.toggle('collapsed', collapsed);
+      $niceToggle.setAttribute('aria-expanded', String(!collapsed));
+      $niceToggle.setAttribute('aria-label', collapsed ? 'Expand Nice to do' : 'Collapse Nice to do');
+      if (collapsed && $niceItems.contains(document.activeElement)) {
+        $niceToggle.focus();
+      }
+    };
+
+    setNiceCollapsed(niceCollapsed);
 
     // Date picker functions
     const openDatePicker = () => {
@@ -2351,7 +2471,15 @@
       $goalInput.focus();
     });
 
+    $niceToggle.addEventListener('click', () => {
+      setNiceCollapsed(!niceCollapsed);
+    });
+
     $niceLabel.addEventListener('click', () => {
+      if (niceCollapsed) {
+        setNiceCollapsed(false);
+        return;
+      }
       const plan = loadPlan(currentDate);
       if (plan.niceToDo.length === 0) {
         plan.niceToDo.push({ text: '', done: false });
