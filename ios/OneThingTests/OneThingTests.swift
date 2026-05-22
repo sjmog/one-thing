@@ -46,20 +46,64 @@ final class OneThingTests: XCTestCase {
 
     func testVisibleTodosMatchesHtmlCompletedFirstOrdering() {
         let persistence = testPersistence()
-        let sync = SyncEngine(
-            apiURL: URL(string: "https://example.test")!,
-            persistence: persistence,
-            secrets: MemorySecretStore(),
-            session: StubSession(responses: [])
-        )
         persistence.saveTodos([
             TodoItem(id: "done", text: "Done", done: true),
             TodoItem(id: "open", text: "Open", done: false)
         ])
 
-        let store = OneThingStore(persistence: persistence, sync: sync)
+        let store = testStore(persistence: persistence)
 
         XCTAssertEqual(store.visibleTodos.map(\.id), ["done", "open"])
+    }
+
+    func testNiceItemsInsertBelowAndMoveByDropIndex() {
+        let store = testStore()
+
+        let first = store.addNiceItem()
+        store.updateNiceItem(at: first, text: "A")
+        let second = store.insertNiceItem(after: first)
+        store.updateNiceItem(at: second, text: "B")
+        let third = store.insertNiceItem(after: second)
+        store.updateNiceItem(at: third, text: "C")
+
+        XCTAssertEqual(store.plan.niceToDo.map(\.text), ["A", "B", "C"])
+
+        store.moveNiceItem(from: third, to: first)
+
+        XCTAssertEqual(store.plan.niceToDo.map(\.text), ["C", "A", "B"])
+    }
+
+    func testTodosInsertBelowAndMoveByOffset() {
+        let store = testStore()
+
+        let first = store.addTodo(text: "A")
+        let second = store.insertTodo(after: first)
+        store.updateTodo(id: second, text: "B")
+        let third = store.insertTodo(after: second)
+        store.updateTodo(id: third, text: "C")
+
+        XCTAssertEqual(store.todos.map(\.text), ["A", "B", "C"])
+
+        store.moveTodo(id: third, by: -2)
+
+        XCTAssertEqual(store.todos.map(\.text), ["C", "A", "B"])
+    }
+
+    func testTodoMoveFollowsVisibleCompletedFirstGroups() {
+        let store = testStore()
+
+        let first = store.addTodo(text: "A")
+        let done = store.addTodo(text: "Done")
+        let second = store.addTodo(text: "B")
+        store.toggleTodo(id: done)
+
+        XCTAssertEqual(store.visibleTodos.map(\.text), ["Done", "A", "B"])
+
+        store.moveTodo(id: second, by: -1)
+
+        XCTAssertEqual(store.visibleTodos.map(\.text), ["Done", "B", "A"])
+        XCTAssertEqual(store.todos.first?.id, second)
+        XCTAssertEqual(store.todos.dropFirst().first?.id, first)
     }
 
     func testSyncPushClearsHandledOutboxAndPullAppliesRemotePlan() async throws {
@@ -164,6 +208,17 @@ final class OneThingTests: XCTestCase {
         let defaults = UserDefaults(suiteName: suiteName)!
         defaults.removePersistentDomain(forName: suiteName)
         return LocalPersistence(defaults: defaults)
+    }
+
+    private func testStore(persistence: LocalPersistence? = nil) -> OneThingStore {
+        let persistence = persistence ?? testPersistence()
+        let sync = SyncEngine(
+            apiURL: URL(string: "https://example.test")!,
+            persistence: persistence,
+            secrets: MemorySecretStore(),
+            session: StubSession(responses: [])
+        )
+        return OneThingStore(persistence: persistence, sync: sync)
     }
 
     private func pullResponseBody(records: [SyncRecord], serverSeq: Int64) throws -> String {

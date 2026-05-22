@@ -69,6 +69,14 @@ final class OneThingStore: ObservableObject {
         return plan.niceToDo.count - 1
     }
 
+    @discardableResult
+    func insertNiceItem(after index: Int) -> Int {
+        let insertIndex = min(max(index + 1, 0), plan.niceToDo.count)
+        plan.niceToDo.insert(NiceItem(), at: insertIndex)
+        savePlan()
+        return insertIndex
+    }
+
     func updateNiceItem(at index: Int, text: String) {
         guard plan.niceToDo.indices.contains(index) else { return }
         plan.niceToDo[index].text = text
@@ -90,10 +98,30 @@ final class OneThingStore: ObservableObject {
         savePlan()
     }
 
+    func moveNiceItem(from index: Int, to destination: Int) {
+        guard plan.niceToDo.indices.contains(index) else { return }
+        let target = min(max(destination, 0), plan.niceToDo.count - 1)
+        guard target != index else { return }
+
+        let item = plan.niceToDo.remove(at: index)
+        plan.niceToDo.insert(item, at: target)
+        savePlan()
+    }
+
     @discardableResult
     func addTodo(text: String = "") -> String {
         let item = TodoItem(text: text)
         saveTodos(todos + [item])
+        return item.id
+    }
+
+    @discardableResult
+    func insertTodo(after id: String) -> String {
+        var next = todos
+        let item = TodoItem()
+        let insertIndex = next.firstIndex { $0.id == id }.map { $0 + 1 } ?? next.count
+        next.insert(item, at: insertIndex)
+        saveTodos(next)
         return item.id
     }
 
@@ -117,6 +145,27 @@ final class OneThingStore: ObservableObject {
 
     func deleteTodo(id: String) {
         saveTodos(todos.filter { $0.id != id })
+    }
+
+    func moveTodo(id: String, by offset: Int) {
+        guard offset != 0 else { return }
+        var next = todos
+        guard let index = next.firstIndex(where: { $0.id == id }) else { return }
+        let moving = next[index]
+        let group = next.filter { $0.done == moving.done }.map(\.id)
+        guard let groupIndex = group.firstIndex(of: id) else { return }
+        let targetGroupIndex = min(max(groupIndex + offset, 0), group.count - 1)
+        guard targetGroupIndex != groupIndex else { return }
+
+        let item = next.remove(at: index)
+        guard let targetIndex = next.firstIndex(where: { $0.id == group[targetGroupIndex] }) else { return }
+        let insertIndex = targetGroupIndex > groupIndex ? targetIndex + 1 : targetIndex
+        next.insert(item, at: min(insertIndex, next.count))
+        saveTodos(next)
+    }
+
+    func changeSelectedDate(by days: Int) {
+        selectedDate = Calendar.current.date(byAdding: .day, value: days, to: selectedDate) ?? selectedDate
     }
 
     private func reloadDate() {

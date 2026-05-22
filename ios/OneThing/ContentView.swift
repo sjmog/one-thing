@@ -1,9 +1,11 @@
 import SwiftUI
 
 struct ContentView: View {
+    @EnvironmentObject private var store: OneThingStore
     @EnvironmentObject private var sync: SyncEngine
     @State private var sidebarOpen = UserDefaults.standard.bool(forKey: "sidebarOpen")
     @State private var showingSync = false
+    @State private var showingDatePicker = false
     @FocusState private var focusedField: FocusedField?
     @AppStorage("onething-theme") private var theme = "light"
     @AppStorage("onething-hide-completed") private var hideCompleted = false
@@ -45,6 +47,17 @@ struct ContentView: View {
                         .transition(.opacity)
                 }
 
+                if !(sidebarOpen && metrics.isCompact) {
+                    DateHeader(
+                        date: store.selectedDate,
+                        previous: { store.changeSelectedDate(by: -1) },
+                        next: { store.changeSelectedDate(by: 1) },
+                        openPicker: { showingDatePicker = true }
+                    )
+                    .position(x: metrics.dateCenterX, y: metrics.dateY)
+                    .zIndex(3)
+                }
+
                 Button(action: toggleSidebar) {
                     Image(systemName: sidebarOpen && metrics.isCompact ? "xmark" : "line.3.horizontal")
                         .font(.system(size: 17, weight: .regular))
@@ -60,6 +73,19 @@ struct ContentView: View {
             .sheet(isPresented: $showingSync) {
                 SyncSheet()
                     .presentationDetents([.medium])
+            }
+            .sheet(isPresented: $showingDatePicker) {
+                DatePicker(
+                    "Date",
+                    selection: Binding(
+                        get: { store.selectedDate },
+                        set: { store.selectedDate = $0 }
+                    ),
+                    displayedComponents: .date
+                )
+                .datePickerStyle(.graphical)
+                .padding()
+                .presentationDetents([.medium])
             }
         }
         .toolbar {
@@ -99,7 +125,7 @@ private struct LayoutMetrics {
     var bottomInset: CGFloat { isCompact ? max(safeArea.bottom, 34) : safeArea.bottom }
     var contentTop: CGFloat {
         let webTop = min(max(size.height * 0.12 + (isCompact ? 15 : 0), 76), isCompact ? 117 : 112)
-        return max(webTop, toggleY + (isCompact ? 35 : 54))
+        return max(webTop + 58.734, toggleY + (isCompact ? 94 : 113))
     }
     var contentLeft: CGFloat {
         if sidebarOpen && !isCompact { return min(max(size.width * 0.08, 20), 72) }
@@ -109,6 +135,10 @@ private struct LayoutMetrics {
     var contentOffset: CGFloat { sidebarOpen && !isCompact ? sidebarWidth : 0 }
     var toggleX: CGFloat { sidebarOpen && !isCompact ? 232 : (isCompact ? 30 : 34) }
     var toggleY: CGFloat { topInset + 22 }
+    var dateY: CGFloat { toggleY }
+    var dateCenterX: CGFloat {
+        sidebarOpen && !isCompact ? sidebarWidth + (size.width - sidebarWidth) / 2 : size.width / 2
+    }
 }
 
 private struct Palette {
@@ -128,27 +158,12 @@ private struct Palette {
 
 private struct PlanCanvas: View {
     @EnvironmentObject private var store: OneThingStore
-    @AppStorage("onething-theme") private var theme = "light"
     @Binding var niceCollapsed: Bool
     let focus: FocusState<FocusedField?>.Binding
-    @State private var showingDatePicker = false
-
-    private var palette: Palette { Palette(theme: theme) }
 
     var body: some View {
         ScrollView(.vertical) {
             VStack(alignment: .leading, spacing: 0) {
-                Button {
-                    showingDatePicker = true
-                } label: {
-                    Text(displayDate(store.selectedDate))
-                        .font(.system(size: 14))
-                        .foregroundStyle(palette.tertiary)
-                        .frame(minHeight: 44, alignment: .leading)
-                }
-                .buttonStyle(.plain)
-                .padding(.bottom, 14.734)
-
                 GoalBlock(focus: focus)
                     .padding(.bottom, 37)
 
@@ -161,12 +176,43 @@ private struct PlanCanvas: View {
             .padding(.bottom, 48)
         }
         .scrollDismissesKeyboard(.interactively)
-        .sheet(isPresented: $showingDatePicker) {
-            DatePicker("Date", selection: $store.selectedDate, displayedComponents: .date)
-                .datePickerStyle(.graphical)
-                .padding()
-                .presentationDetents([.medium])
+    }
+}
+
+private struct DateHeader: View {
+    @AppStorage("onething-theme") private var theme = "light"
+    let date: Date
+    let previous: () -> Void
+    let next: () -> Void
+    let openPicker: () -> Void
+
+    private var palette: Palette { Palette(theme: theme) }
+
+    var body: some View {
+        HStack(spacing: 2) {
+            Button(action: previous) {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 15, weight: .semibold))
+                    .frame(width: 44, height: 44)
+            }
+            .accessibilityLabel("Previous day")
+
+            Button(action: openPicker) {
+                Text(displayDate(date))
+                    .font(.system(size: 14))
+                    .frame(minWidth: 96, minHeight: 44)
+            }
+            .accessibilityLabel("Choose date")
+
+            Button(action: next) {
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 15, weight: .semibold))
+                    .frame(width: 44, height: 44)
+            }
+            .accessibilityLabel("Next day")
         }
+        .foregroundStyle(palette.tertiary)
+        .buttonStyle(.plain)
     }
 
     private func displayDate(_ date: Date) -> String {
@@ -273,34 +319,138 @@ private struct NiceRow: View {
     @AppStorage("onething-theme") private var theme = "light"
     let index: Int
     let focus: FocusState<FocusedField?>.Binding
+    @State private var rowWidth: CGFloat = 1
+    @State private var rowHeight: CGFloat = 44
+    @State private var swipeOffset: CGFloat = 0
+    @State private var reorderReady = false
 
     private var palette: Palette { Palette(theme: theme) }
 
     var body: some View {
+        ZStack(alignment: .leading) {
+            displayText
+            editor
+        }
+        .overlay(alignment: .leading) {
+            strikeOverlay
+        }
+        .background(
+            GeometryReader { proxy in
+                Color.clear
+                    .onAppear {
+                        rowWidth = proxy.size.width
+                        rowHeight = proxy.size.height
+                    }
+                    .onChange(of: proxy.size.width) { rowWidth = $0 }
+                    .onChange(of: proxy.size.height) { rowHeight = $0 }
+            }
+        )
+        .contentShape(Rectangle())
+        .onTapGesture {
+            if showDisplayText {
+                focus.wrappedValue = .nice(index)
+            }
+        }
+        .gesture(completeSwipe)
+        .simultaneousGesture(reorderGesture)
+    }
+
+    private var editor: some View {
         TextField("", text: binding, axis: .vertical)
             .font(.system(size: 16))
             .foregroundStyle(palette.secondaryStrong)
-            .strikethrough(item.done)
-            .opacity(item.done ? 0.4 : 1)
+            .opacity(showDisplayText ? 0 : item.done ? 0.4 : 1)
             .lineLimit(1...3)
             .textFieldStyle(.plain)
-            .frame(minWidth: 100, minHeight: 44, alignment: .leading)
+            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
             .focused(focus, equals: .nice(index))
             .submitLabel(.next)
-            .gesture(completeSwipe)
+    }
+
+    private var displayText: some View {
+        Text(item.text.isEmpty ? " " : item.text)
+            .font(.system(size: 16))
+            .foregroundStyle(palette.secondaryStrong)
+            .opacity(showDisplayText ? 0.4 : 0)
+            .lineLimit(1...3)
+            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+            .allowsHitTesting(false)
+    }
+
+    private var strikeOverlay: some View {
+        GeometryReader { proxy in
+            let width = strikeWidth(total: proxy.size.width)
+            strikeText(width: proxy.size.width)
+                .opacity(width > 0 ? 1 : 0)
+                .mask(alignment: .leading) {
+                    Rectangle().frame(width: width)
+                }
+        }
+        .allowsHitTesting(false)
+    }
+
+    private func strikeText(width: CGFloat) -> some View {
+        Text(item.text.isEmpty ? " " : item.text)
+            .font(.system(size: 16))
+            .foregroundStyle(.clear)
+            .strikethrough(true, color: palette.secondaryStrong.opacity(0.55))
+            .lineLimit(1...3)
+            .frame(width: width, alignment: .leading)
+            .frame(minHeight: 44, alignment: .leading)
     }
 
     private var completeSwipe: some Gesture {
-        DragGesture(minimumDistance: 40)
+        DragGesture(minimumDistance: 8)
+            .onChanged { value in
+                if abs(value.translation.width) >= abs(value.translation.height) {
+                    swipeOffset = value.translation.width
+                }
+            }
             .onEnded { value in
+                defer {
+                    withAnimation(.easeOut(duration: 0.16)) {
+                        swipeOffset = 0
+                    }
+                }
+
                 if store.plan.niceToDo.indices.contains(index) {
-                    if value.translation.width > 40, !item.done {
+                    let threshold = max(rowWidth * 0.25, 44)
+                    if value.translation.width > threshold, !item.done {
                         store.toggleNiceItem(at: index)
-                    } else if value.translation.width < -40, item.done {
+                    } else if value.translation.width < -threshold, item.done {
                         store.toggleNiceItem(at: index)
                     }
                 }
             }
+    }
+
+    private var reorderGesture: some Gesture {
+        LongPressGesture(minimumDuration: 0.26)
+            .sequenced(before: DragGesture(minimumDistance: 0))
+            .onChanged { value in
+                if case .second(true, _) = value, !reorderReady {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    reorderReady = true
+                }
+            }
+            .onEnded { value in
+                defer { reorderReady = false }
+                guard case let .second(true, drag?) = value else { return }
+                let steps = Int((drag.translation.height / max(rowHeight, 44)).rounded())
+                if steps != 0 {
+                    store.moveNiceItem(from: index, to: index + steps)
+                }
+            }
+    }
+
+    private func strikeWidth(total: CGFloat) -> CGFloat {
+        let base = item.done ? total : 0
+        let width = base + swipeOffset
+        return min(max(width, 0), total)
+    }
+
+    private var showDisplayText: Bool {
+        item.done && swipeOffset == 0 && focus.wrappedValue != .nice(index)
     }
 
     private var item: NiceItem {
@@ -313,18 +463,16 @@ private struct NiceRow: View {
             set: { text in
                 let submitted = text.hasNewline
                 let nextText = text.withoutNewlines
+                var currentIndex = index
                 if store.plan.niceToDo.indices.contains(index) {
                     store.updateNiceItem(at: index, text: nextText)
                 } else if !nextText.isEmpty {
-                    store.addNiceItem()
-                    store.updateNiceItem(at: index, text: nextText)
+                    currentIndex = store.addNiceItem()
+                    store.updateNiceItem(at: currentIndex, text: nextText)
                 }
 
-                if submitted, !nextText.isEmpty || store.plan.niceToDo.indices.contains(index) {
-                    let nextIndex = index + 1
-                    if !store.plan.niceToDo.indices.contains(nextIndex) {
-                        store.addNiceItem()
-                    }
+                if submitted, store.plan.niceToDo.indices.contains(currentIndex) {
+                    let nextIndex = store.insertNiceItem(after: currentIndex)
                     focus.wrappedValue = .nice(nextIndex)
                 }
             }
@@ -477,32 +625,136 @@ private struct TodoRow: View {
     @AppStorage("onething-theme") private var theme = "light"
     let item: TodoItem
     let focus: FocusState<FocusedField?>.Binding
+    @State private var rowWidth: CGFloat = 1
+    @State private var rowHeight: CGFloat = 44
+    @State private var swipeOffset: CGFloat = 0
+    @State private var reorderReady = false
 
     private var palette: Palette { Palette(theme: theme) }
 
     var body: some View {
+        ZStack(alignment: .leading) {
+            displayText
+            editor
+        }
+        .overlay(alignment: .leading) {
+            strikeOverlay
+        }
+        .background(
+            GeometryReader { proxy in
+                Color.clear
+                    .onAppear {
+                        rowWidth = proxy.size.width
+                        rowHeight = proxy.size.height
+                    }
+                    .onChange(of: proxy.size.width) { rowWidth = $0 }
+                    .onChange(of: proxy.size.height) { rowHeight = $0 }
+            }
+        )
+        .contentShape(Rectangle())
+        .onTapGesture {
+            if showDisplayText {
+                focus.wrappedValue = .todo(item.id)
+            }
+        }
+        .gesture(completeSwipe)
+        .simultaneousGesture(reorderGesture)
+    }
+
+    private var editor: some View {
         TextField("", text: binding, axis: .vertical)
             .font(.system(size: 15))
             .foregroundStyle(palette.primary)
-            .strikethrough(item.done)
-            .opacity(item.done ? 0.4 : 1)
+            .opacity(showDisplayText ? 0 : item.done ? 0.4 : 1)
             .textFieldStyle(.plain)
             .lineLimit(1...4)
-            .frame(minHeight: 44, alignment: .leading)
+            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
             .focused(focus, equals: .todo(item.id))
             .submitLabel(.next)
-            .gesture(completeSwipe)
+    }
+
+    private var displayText: some View {
+        Text(item.text.isEmpty ? " " : item.text)
+            .font(.system(size: 15))
+            .foregroundStyle(palette.primary)
+            .opacity(showDisplayText ? 0.4 : 0)
+            .lineLimit(1...4)
+            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+            .allowsHitTesting(false)
+    }
+
+    private var strikeOverlay: some View {
+        GeometryReader { proxy in
+            let width = strikeWidth(total: proxy.size.width)
+            strikeText(width: proxy.size.width)
+                .opacity(width > 0 ? 1 : 0)
+                .mask(alignment: .leading) {
+                    Rectangle().frame(width: width)
+                }
+        }
+        .allowsHitTesting(false)
+    }
+
+    private func strikeText(width: CGFloat) -> some View {
+        Text(item.text.isEmpty ? " " : item.text)
+            .font(.system(size: 15))
+            .foregroundStyle(.clear)
+            .strikethrough(true, color: palette.primary.opacity(0.55))
+            .lineLimit(1...4)
+            .frame(width: width, alignment: .leading)
+            .frame(minHeight: 44, alignment: .leading)
     }
 
     private var completeSwipe: some Gesture {
-        DragGesture(minimumDistance: 40)
+        DragGesture(minimumDistance: 8)
+            .onChanged { value in
+                if abs(value.translation.width) >= abs(value.translation.height) {
+                    swipeOffset = value.translation.width
+                }
+            }
             .onEnded { value in
-                if value.translation.width > 40, !item.done {
+                defer {
+                    withAnimation(.easeOut(duration: 0.16)) {
+                        swipeOffset = 0
+                    }
+                }
+
+                let threshold = max(rowWidth * 0.25, 44)
+                if value.translation.width > threshold, !item.done {
                     store.toggleTodo(id: item.id)
-                } else if value.translation.width < -40, item.done {
+                } else if value.translation.width < -threshold, item.done {
                     store.toggleTodo(id: item.id)
                 }
             }
+    }
+
+    private var reorderGesture: some Gesture {
+        LongPressGesture(minimumDuration: 0.26)
+            .sequenced(before: DragGesture(minimumDistance: 0))
+            .onChanged { value in
+                if case .second(true, _) = value, !reorderReady {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    reorderReady = true
+                }
+            }
+            .onEnded { value in
+                defer { reorderReady = false }
+                guard case let .second(true, drag?) = value else { return }
+                let steps = Int((drag.translation.height / max(rowHeight, 44)).rounded())
+                if steps != 0 {
+                    store.moveTodo(id: item.id, by: steps)
+                }
+            }
+    }
+
+    private func strikeWidth(total: CGFloat) -> CGFloat {
+        let base = item.done ? total : 0
+        let width = base + swipeOffset
+        return min(max(width, 0), total)
+    }
+
+    private var showDisplayText: Bool {
+        item.done && swipeOffset == 0 && focus.wrappedValue != .todo(item.id)
     }
 
     private var binding: Binding<String> {
@@ -512,7 +764,7 @@ private struct TodoRow: View {
                 let submitted = text.hasNewline
                 store.updateTodo(id: item.id, text: text.withoutNewlines)
                 if submitted {
-                    let id = store.addTodo()
+                    let id = store.insertTodo(after: item.id)
                     focus.wrappedValue = .todo(id)
                 }
             }
