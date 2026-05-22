@@ -6,6 +6,7 @@ struct ContentView: View {
     @State private var sidebarOpen = UserDefaults.standard.bool(forKey: "sidebarOpen")
     @State private var showingSync = false
     @State private var showingDatePicker = false
+    @State private var showingUndoConfirmation = false
     @FocusState private var focusedField: FocusedField?
     @AppStorage("onething-theme") private var theme = "light"
     @AppStorage("onething-hide-completed") private var hideCompleted = false
@@ -59,8 +60,7 @@ struct ContentView: View {
                 }
 
                 Button(action: toggleSidebar) {
-                    Image(systemName: sidebarOpen && metrics.isCompact ? "xmark" : "line.3.horizontal")
-                        .font(.system(size: 17, weight: .regular))
+                    SidebarToggleIcon(isClose: sidebarOpen && metrics.isCompact)
                         .foregroundStyle(Palette(theme: theme).tertiary)
                         .frame(width: 44, height: 44)
                 }
@@ -96,6 +96,17 @@ struct ContentView: View {
                 }
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .shakeUndoRequested)) { _ in
+            requestUndoConfirmation()
+        }
+        .alert("Undo \(store.undoTitle)?", isPresented: $showingUndoConfirmation) {
+            Button("Cancel", role: .cancel) {}
+            Button("Undo") {
+                store.undoLastAction()
+            }
+        } message: {
+            Text("This will undo \(store.undoTitle).")
+        }
         .ignoresSafeArea()
         .task { sync.start() }
     }
@@ -103,6 +114,37 @@ struct ContentView: View {
     private func toggleSidebar() {
         sidebarOpen.toggle()
         UserDefaults.standard.set(sidebarOpen, forKey: "sidebarOpen")
+    }
+
+    private func requestUndoConfirmation() {
+        guard store.canUndo else { return }
+        focusedField = nil
+        showingUndoConfirmation = true
+    }
+}
+
+private struct SidebarToggleIcon: View {
+    let isClose: Bool
+
+    var body: some View {
+        Group {
+            if isClose {
+                Image(systemName: "xmark")
+                    .font(.system(size: 17, weight: .regular))
+            } else {
+                VStack(spacing: 4) {
+                    line
+                    line
+                    line
+                }
+                .frame(width: 20, height: 14)
+            }
+        }
+    }
+
+    private var line: some View {
+        Capsule()
+            .frame(width: 20, height: 2)
     }
 }
 
@@ -351,6 +393,11 @@ private struct NiceRow: View {
                 focus.wrappedValue = .nice(index)
             }
         }
+        .onChange(of: focus.wrappedValue) { focused in
+            if focused != .nice(index) {
+                deleteIfEmpty()
+            }
+        }
         .gesture(completeSwipe)
         .simultaneousGesture(reorderGesture)
     }
@@ -453,6 +500,13 @@ private struct NiceRow: View {
         item.done && swipeOffset == 0 && focus.wrappedValue != .nice(index)
     }
 
+    private func deleteIfEmpty() {
+        guard store.plan.niceToDo.indices.contains(index) else { return }
+        if item.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            store.deleteNiceItem(at: index)
+        }
+    }
+
     private var item: NiceItem {
         store.plan.niceToDo.indices.contains(index) ? store.plan.niceToDo[index] : NiceItem()
     }
@@ -464,11 +518,18 @@ private struct NiceRow: View {
                 let submitted = text.hasNewline
                 let nextText = text.withoutNewlines
                 var currentIndex = index
+                if nextText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    if store.plan.niceToDo.indices.contains(index) {
+                        store.deleteNiceItem(at: index)
+                    }
+                    focus.wrappedValue = nil
+                    return
+                }
+
                 if store.plan.niceToDo.indices.contains(index) {
                     store.updateNiceItem(at: index, text: nextText)
                 } else if !nextText.isEmpty {
-                    currentIndex = store.addNiceItem()
-                    store.updateNiceItem(at: currentIndex, text: nextText)
+                    currentIndex = store.addNiceItem(text: nextText)
                 }
 
                 if submitted, store.plan.niceToDo.indices.contains(currentIndex) {
@@ -657,6 +718,11 @@ private struct TodoRow: View {
                 focus.wrappedValue = .todo(item.id)
             }
         }
+        .onChange(of: focus.wrappedValue) { focused in
+            if focused != .todo(item.id) {
+                deleteIfEmpty()
+            }
+        }
         .gesture(completeSwipe)
         .simultaneousGesture(reorderGesture)
     }
@@ -757,12 +823,26 @@ private struct TodoRow: View {
         item.done && swipeOffset == 0 && focus.wrappedValue != .todo(item.id)
     }
 
+    private func deleteIfEmpty() {
+        let text = store.todos.first(where: { $0.id == item.id })?.text ?? item.text
+        if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            store.deleteTodo(id: item.id)
+        }
+    }
+
     private var binding: Binding<String> {
         Binding(
             get: { store.todos.first(where: { $0.id == item.id })?.text ?? item.text },
             set: { text in
                 let submitted = text.hasNewline
-                store.updateTodo(id: item.id, text: text.withoutNewlines)
+                let nextText = text.withoutNewlines
+                if nextText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    store.deleteTodo(id: item.id)
+                    focus.wrappedValue = nil
+                    return
+                }
+
+                store.updateTodo(id: item.id, text: nextText)
                 if submitted {
                     let id = store.insertTodo(after: item.id)
                     focus.wrappedValue = .todo(id)
@@ -935,14 +1015,14 @@ private struct SheetActionButtonStyle: ButtonStyle {
     }
 }
 
-private extension String {
+extension String {
     var hasNewline: Bool {
         rangeOfCharacter(from: .newlines) != nil
     }
 
     var withoutNewlines: String {
-        components(separatedBy: .newlines)
+        trimmingCharacters(in: .newlines)
+            .components(separatedBy: .newlines)
             .joined(separator: " ")
-            .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }

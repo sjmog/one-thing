@@ -106,6 +106,86 @@ final class OneThingTests: XCTestCase {
         XCTAssertEqual(store.todos.dropFirst().first?.id, first)
     }
 
+    func testItemUpdatesPreserveSpacesAndDeleteEmptyRows() {
+        let store = testStore()
+
+        let nice = store.addNiceItem()
+        store.updateNiceItem(at: nice, text: "Write the note ")
+
+        XCTAssertEqual(store.plan.niceToDo.map(\.text), ["Write the note "])
+
+        store.updateNiceItem(at: nice, text: "   ")
+
+        XCTAssertEqual(store.plan.niceToDo, [])
+
+        let todo = store.addTodo(text: "Send the note")
+        store.updateTodo(id: todo, text: "Send the note ")
+
+        XCTAssertEqual(store.todos.map(\.text), ["Send the note "])
+
+        store.updateTodo(id: todo, text: "")
+
+        XCTAssertEqual(store.todos, [])
+    }
+
+    func testRemovingNewlinesDoesNotTrimTypedSpaces() {
+        XCTAssertEqual("Nice item ".withoutNewlines, "Nice item ")
+        XCTAssertEqual("Nice\nitem".withoutNewlines, "Nice item")
+        XCTAssertEqual("Nice item\n".withoutNewlines, "Nice item")
+    }
+
+    func testUndoRestoresLastPlanAction() {
+        let store = testStore()
+
+        store.updateGoal("Draft release")
+
+        XCTAssertTrue(store.canUndo)
+        XCTAssertEqual(store.undoTitle, "editing the goal")
+
+        store.undoLastAction()
+
+        XCTAssertEqual(store.plan.goal, "")
+        XCTAssertFalse(store.canUndo)
+    }
+
+    func testUndoRestoresNiceDeletion() {
+        let store = testStore()
+        let index = store.addNiceItem(text: "Keep this")
+
+        store.updateNiceItem(at: index, text: "")
+
+        XCTAssertEqual(store.plan.niceToDo, [])
+        XCTAssertEqual(store.undoTitle, "deleting a nice to do")
+
+        store.undoLastAction()
+
+        XCTAssertEqual(store.plan.niceToDo, [NiceItem(text: "Keep this")])
+    }
+
+    func testUndoRestoresLastTodoAction() {
+        let store = testStore()
+        let id = store.addTodo(text: "First wording")
+
+        store.updateTodo(id: id, text: "Second wording")
+        store.undoLastAction()
+
+        XCTAssertEqual(store.todos, [TodoItem(id: id, text: "First wording")])
+    }
+
+    func testUndoRestoresDateNavigation() {
+        let store = testStore()
+        store.selectedDate = date(2026, 5, 22)
+
+        store.changeSelectedDate(by: 1)
+
+        XCTAssertEqual(DateKeys.dayString(store.selectedDate), "2026-05-23")
+        XCTAssertEqual(store.undoTitle, "changing the date")
+
+        store.undoLastAction()
+
+        XCTAssertEqual(DateKeys.dayString(store.selectedDate), "2026-05-22")
+    }
+
     func testSyncPushClearsHandledOutboxAndPullAppliesRemotePlan() async throws {
         let persistence = testPersistence()
         let secrets = MemorySecretStore()
