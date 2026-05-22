@@ -33,6 +33,7 @@ struct OneThingApp: App {
                         }
                     }
             }
+            .ignoresSafeArea()
         }
     }
 }
